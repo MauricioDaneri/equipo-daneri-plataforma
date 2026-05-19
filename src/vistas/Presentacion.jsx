@@ -179,7 +179,9 @@ export default function Presentacion() {
     const m = Math.floor(segundos / 60)
     const s = Math.floor(segundos % 60)
     return `${m}:${s.toString().padStart(2, '0')}`
-    return (
+  }
+
+  return (
     <div style={estilos.pagina}>
       
       {/* Botón Salir */}
