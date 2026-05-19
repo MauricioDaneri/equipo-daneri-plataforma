@@ -1,0 +1,291 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PLATAFORMA DE ANÁLISIS — EQUIPO DANERI
+   Sistema de Diseño Global (Golden Build — Stitch)
+   Skill_EstiloGoldenBuild
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Tokens de Color ──────────────────────────────────────────────── */
+:root {
+  --color-fondo:         #141414;
+  --color-superficie:    #1E1E1E;
+  --color-superficie-2:  #252525;
+  --color-borde:         #2A2A2A;
+
+  --color-dorado:        #D4AF37;
+  --color-dorado-suave:  #F0CC6A;
+  --color-dorado-alfa:   rgba(212, 175, 55, 0.12);
+
+  --color-texto:         #F0F0F0;
+  --color-texto-suave:   #9A9A9A;
+  --color-texto-muted:   #555555;
+
+  --color-rojo:          #C0392B;
+  --color-rojo-suave:    #E74C3C;
+  --color-azul:          #2980B9;
+  --color-azul-suave:    #3498DB;
+  --color-exito:         #27AE60;
+
+  /* Espaciado */
+  --radio-card:   12px;
+  --radio-boton:  8px;
+  --radio-input:  6px;
+
+  /* Sidebar */
+  --sidebar-ancho: 200px;
+
+  /* Transiciones */
+  --transicion: 0.2s ease;
+}
+
+/* ── Reset Global ─────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Sin scroll global — layout 100vh */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none; /* App de escritorio: sin selección de texto por defecto */
+}
+
+/* ── Animaciones Suaves (Módulo 4) ────────────────────────────────── */
+@keyframes fadeInSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Aplicar animación a vistas principales */
+#root > div > div:nth-child(2) > div,
+.pagina-animada {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* ── Jerarquía Tipográfica ────────────────────────────────────────── */
+h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-texto);
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+h3 {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-dorado);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+p, span, label {
+  font-size: 14px;
+  color: var(--color-texto-suave);
+  line-height: 1.5;
+}
+
+/* Texto seleccionable en inputs y áreas de contenido */
+input, textarea, [contenteditable] {
+  user-select: text;
+}
+
+/* ── Componentes Base ─────────────────────────────────────────────── */
+
+/* Tarjeta */
+.tarjeta {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-card);
+  padding: 20px 24px;
+  animation: fadeInSlideUp 0.4s ease-out forwards;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.tarjeta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.tarjeta-kpi {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-card);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeInSlideUp 0.4s ease-out forwards;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+.tarjeta-kpi:hover {
+  border-color: var(--color-dorado-alfa);
+  transform: translateY(-2px);
+}
+
+/* Número KPI grande */
+.kpi-valor {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-texto);
+  letter-spacing: -0.02em;
+}
+
+/* Botón Primario */
+.boton-primario {
+  background: var(--color-dorado);
+  color: #141414;
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  border-radius: var(--radio-boton);
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background var(--transicion), transform var(--transicion);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.boton-primario:hover {
+  background: var(--color-dorado-suave);
+  transform: translateY(-1px);
+}
+.boton-primario:active {
+  transform: translateY(0);
+}
+
+/* Botón Secundario */
+.boton-secundario {
+  background: transparent;
+  color: var(--color-texto-suave);
+  font-weight: 500;
+  font-size: 13px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-boton);
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: border-color var(--transicion), color var(--transicion);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.boton-secundario:hover {
+  border-color: var(--color-dorado);
+  color: var(--color-dorado);
+}
+
+/* Botón de Acción Rápida (Editor Táctico) */
+.boton-accion {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  color: var(--color-texto);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: border-color var(--transicion), background var(--transicion), color var(--transicion);
+}
+.boton-accion:hover {
+  border-color: var(--color-dorado);
+  color: var(--color-dorado);
+}
+.boton-accion.activo {
+  border-color: var(--color-dorado);
+  background: var(--color-dorado-alfa);
+  color: var(--color-dorado);
+}
+
+/* Insignia / Badge */
+.insignia {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.insignia-dorado  { background: var(--color-dorado-alfa); color: var(--color-dorado); }
+.insignia-rojo    { background: rgba(192, 57, 43, 0.15); color: var(--color-rojo-suave); }
+.insignia-azul    { background: rgba(41, 128, 185, 0.15); color: var(--color-azul-suave); }
+.insignia-exito   { background: rgba(39, 174, 96, 0.15); color: var(--color-exito); }
+
+/* Toggle Switch */
+.toggle-contenedor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.toggle-track {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--color-borde);
+  position: relative;
+  transition: background var(--transicion);
+  flex-shrink: 0;
+}
+.toggle-track.activo {
+  background: rgba(212, 175, 55, 0.4);
+}
+.toggle-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-texto-muted);
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform var(--transicion), background var(--transicion);
+}
+.toggle-track.activo .toggle-thumb {
+  transform: translateX(18px);
+  background: var(--color-dorado);
+}
+
+/* Divisor */
+.divisor {
+  border: none;
+  border-top: 1px solid var(--color-borde);
+  margin: 16px 0;
+}
+
+/* Scrollbar personalizada (para listas) */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-borde); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-texto-muted); }

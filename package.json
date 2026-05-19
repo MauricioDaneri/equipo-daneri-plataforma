@@ -1,0 +1,68 @@
+{
+  "name": "equipo-daneri-plataforma",
+  "version": "1.0.0",
+  "description": "Plataforma de Análisis — Equipo Daneri",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"electron .\"",
+    "dev:vite": "vite",
+    "build": "vite build",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build && electron-builder",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "audit": "node scripts/auditor.js"
+  },
+  "dependencies": {
+    "dexie": "^4.0.7",
+    "dexie-react-hooks": "^1.1.7",
+    "electron-updater": "^6.2.1",
+    "fabric": "^5.5.2",
+    "firebase": "^12.13.0",
+    "framer-motion": "^12.38.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2",
+    "lucide-react": "^0.395.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.1",
+    "electron-builder": "^24.13.3",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^29.1.1",
+    "vite": "^5.3.1",
+    "vitest": "^4.1.6",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.equipodaneri.plataforma",
+    "productName": "Plataforma de Análisis — Equipo Daneri",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "REEMPLAZAR-CON-USUARIO-GITHUB",
+      "repo": "equipo-daneri-plataforma"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/assets/icon.ico"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/**/*"
+    ]
+  }
+}
