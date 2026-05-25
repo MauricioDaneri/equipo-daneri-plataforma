@@ -6,7 +6,7 @@ import BarraTitulo from './BarraTitulo'
 import ErrorBoundary from '../ui/ErrorBoundary'
 import { RefreshCw, X, Sparkles } from 'lucide-react'
 import { auth } from '../../servicios/firebase'
-import { sincronizarLocalHaciaNube, sincronizarNubeHaciaLocal } from '../../servicios/sync'
+import { sincronizarLocalHaciaNube, sincronizarNubeHaciaLocal, isSyncEnProgreso } from '../../servicios/sync'
 
 /**
  * LayoutMaestro — Estructura principal 100vh de la Plataforma de Análisis.
@@ -63,6 +63,12 @@ export default function LayoutMaestro() {
       const isAutoSync = localStorage.getItem('auto_sync_enabled') === 'true';
       if (!isAutoSync) return;
       
+      // Evitar ejecutar si ya hay un sync en progreso (manual o auto)
+      if (isSyncEnProgreso()) {
+        console.log('[AutoSync] Sync ya en progreso, omitiendo ciclo.');
+        return;
+      }
+      
       const user = auth.currentUser;
       if (!user) return;
       
@@ -94,10 +100,11 @@ export default function LayoutMaestro() {
     };
     window.addEventListener('autosync:toggle', handleToggleEvent);
     
-    // Ejecutar una vez pasados 3 segundos del arranque si está activado
+    // Ejecutar una vez pasados 15 segundos del arranque si está activado
+    // (dar tiempo a que la app se estabilice para evitar saturar Firestore al inicio)
     const initialDelay = setTimeout(() => {
       ejecutarSincronizacionSilenciosa();
-    }, 3000);
+    }, 15000);
     
     return () => {
       clearInterval(timerId);

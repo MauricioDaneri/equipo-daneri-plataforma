@@ -5,7 +5,15 @@ import { collection, doc, setDoc, getDocs, writeBatch } from 'firebase/firestore
 /**
  * Módulo de sincronización en la nube (Firestore) para la Plataforma Equipo Daneri
  * Permite respaldar la base de datos IndexedDB en Firestore y restaurarla.
+ *
+ * NOTA: Los batches se envían en bloques de 10 docs con 300ms de pausa entre ellos
+ * para evitar saturar el write stream de Firestore (error resource-exhausted).
+ * Se implementa un lock de concurrencia para evitar syncs paralelos.
  */
+
+// ── Lock de concurrencia global ─────────────────────────────────────────────
+let _syncEnProgreso = false
+export function isSyncEnProgreso() { return _syncEnProgreso }
 
 // Función para comprimir una imagen base64 de forma asíncrona usando canvas
 async function comprimirBase64(base64Str, maxWidth = 256, maxHeight = 256) {
@@ -81,76 +89,110 @@ function sanitizarParaFirestore(obj) {
 export async function sincronizarLocalHaciaNube(uid) {
   if (!uid) throw new Error('Se requiere el UID del usuario para sincronizar con la nube.')
 
-  console.log('[Sync] Iniciando sincronización de local a la nube para UID:', uid)
+  // Protección contra syncs concurrentes que saturan Firestore
+  if (_syncEnProgreso) {
+    console.warn('[Sync] Sincronización ya en progreso. Omitiendo solicitud duplicada.')
+    return null
+  }
+  _syncEnProgreso = true
 
-  // Obtener datos locales de las tablas clave
-  const boxeadores = await db.boxeadores.toArray()
-  const sesiones = await db.sesiones.toArray()
-  const eventos = await db.eventos.toArray()
-  const anotaciones = await db.anotaciones.toArray()
-  const configuracion = await db.configuracion.toArray()
-  const analistas = await db.analistas.toArray()
+  try {
+    console.log('[Sync] Iniciando sincronización de local a la nube para UID:', uid)
 
-  // Helper para subir datos en batches de 500 (límite de Firestore)
-  const subirColeccion = async (nombreColeccion, items) => {
-    if (!items || items.length === 0) return
+    // Obtener datos locales de las tablas clave
+    const boxeadores = await db.boxeadores.toArray()
+    const sesiones = await db.sesiones.toArray()
+    const eventos = await db.eventos.toArray()
+    const anotaciones = await db.anotaciones.toArray()
+    const configuracion = await db.configuracion.toArray()
+    const analistas = await db.analistas.toArray()
 
-    let batch = writeBatch(dbFirestore)
-    let contador = 0
+    // Helper para subir datos en batches de 10 con throttling y retry
+    const BATCH_SIZE = 10
+    const BATCH_DELAY_MS = 300 // 300ms entre batches para no saturar el stream
+    const MAX_RETRIES = 3
 
-    for (const item of items) {
-      const idStr = String(item.id)
-      const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
-      
-      let itemToSync = sanitizarParaFirestore(item)
-      
-      // Comprimir foto base64 pesada de los boxeadores antes de sincronizar a Firestore
-      if (nombreColeccion === 'boxeadores' && itemToSync.foto) {
-        try {
-          itemToSync.foto = await comprimirBase64(itemToSync.foto)
-        } catch (errFoto) {
-          console.warn('[Sync] Error comprimiendo foto de boxeador:', errFoto)
+    const subirColeccion = async (nombreColeccion, items) => {
+      if (!items || items.length === 0) return
+
+      let batch = writeBatch(dbFirestore)
+      let contador = 0
+
+      for (const item of items) {
+        const idStr = String(item.id)
+        const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
+        
+        let itemToSync = sanitizarParaFirestore(item)
+        
+        // Comprimir foto base64 pesada de los boxeadores antes de sincronizar a Firestore
+        if (nombreColeccion === 'boxeadores' && itemToSync.foto) {
+          try {
+            itemToSync.foto = await comprimirBase64(itemToSync.foto)
+          } catch (errFoto) {
+            console.warn('[Sync] Error comprimiendo foto de boxeador:', errFoto)
+          }
+        }
+        
+        // Sanitizar el videoPath en la nube para no revelar rutas de disco locales absolutas de Windows.
+        // Guardamos sólo el nombre del archivo de video.
+        if (nombreColeccion === 'sesiones' && itemToSync.videoPath) {
+          const partes = itemToSync.videoPath.split(/[\\/]/)
+          itemToSync.videoPath = partes[partes.length - 1] // E.g., "Ivan_vs_Leveti_22min.mp4"
+        }
+
+        batch.set(docRef, itemToSync)
+        contador++
+
+        if (contador === BATCH_SIZE) {
+          await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
+          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+          batch = writeBatch(dbFirestore)
+          contador = 0
         }
       }
-      
-      // Sanitizar el videoPath en la nube para no revelar rutas de disco locales absolutas de Windows.
-      // Guardamos sólo el nombre del archivo de video.
-      if (nombreColeccion === 'sesiones' && itemToSync.videoPath) {
-        const partes = itemToSync.videoPath.split(/[\\/]/)
-        itemToSync.videoPath = partes[partes.length - 1] // E.g., "Ivan_vs_Leveti_22min.mp4"
-      }
 
-      batch.set(docRef, itemToSync)
-      contador++
-
-      if (contador === 25) {
-        await batch.commit()
-        await new Promise(resolve => setTimeout(resolve, 80)) // Dar un respiro al stream de Firestore
-        batch = writeBatch(dbFirestore)
-        contador = 0
+      if (contador > 0) {
+        await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
       }
     }
 
-    if (contador > 0) {
-      await batch.commit()
-      await new Promise(resolve => setTimeout(resolve, 80))
+    // Ejecutar subidas ordenadas
+    await subirColeccion('boxeadores', boxeadores)
+    await subirColeccion('sesiones', sesiones)
+    await subirColeccion('eventos', eventos)
+    await subirColeccion('anotaciones', anotaciones)
+    await subirColeccion('configuracion', configuracion)
+    await subirColeccion('analistas', analistas)
+
+    console.log('[Sync] Sincronización de local a nube finalizada con éxito.')
+    return {
+      boxeadoresCount: boxeadores.length,
+      sesionesCount: sesiones.length,
+      eventosCount: eventos.length,
+      anotacionesCount: anotaciones.length
     }
+  } finally {
+    _syncEnProgreso = false
   }
+}
 
-  // Ejecutar subidas ordenadas
-  await subirColeccion('boxeadores', boxeadores)
-  await subirColeccion('sesiones', sesiones)
-  await subirColeccion('eventos', eventos)
-  await subirColeccion('anotaciones', anotaciones)
-  await subirColeccion('configuracion', configuracion)
-  await subirColeccion('analistas', analistas)
-
-  console.log('[Sync] Sincronización de local a nube finalizada con éxito.')
-  return {
-    boxeadoresCount: boxeadores.length,
-    sesionesCount: sesiones.length,
-    eventosCount: eventos.length,
-    anotacionesCount: anotaciones.length
+// Helper: Commit un batch con reintentos y backoff exponencial
+async function commitBatchConRetry(batch, coleccion, maxRetries) {
+  for (let intento = 0; intento < maxRetries; intento++) {
+    try {
+      await batch.commit()
+      return
+    } catch (err) {
+      const esRecursoAgotado = err?.code === 'resource-exhausted' || err?.message?.includes('resource-exhausted')
+      if (esRecursoAgotado && intento < maxRetries - 1) {
+        const backoffMs = Math.min(1000 * Math.pow(2, intento), 8000) // 1s, 2s, 4s, max 8s
+        console.warn(`[Sync] Firestore resource-exhausted en ${coleccion}. Reintentando en ${backoffMs}ms... (intento ${intento + 1}/${maxRetries})`)
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+      } else {
+        throw err
+      }
+    }
   }
 }
 

@@ -4,7 +4,7 @@ import { db } from '../servicios/db'
 import { useModal } from '../context/ModalContext'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { auth } from '../servicios/firebase'
-import { sincronizarLocalHaciaNube, sincronizarNubeHaciaLocal } from '../servicios/sync'
+import { sincronizarLocalHaciaNube, sincronizarNubeHaciaLocal, isSyncEnProgreso } from '../servicios/sync'
 
 // Default hotkeys en caso de que falten en la DB
 const defaultHotkeys = {
@@ -121,6 +121,12 @@ export default function Ajustes() {
 
     setSincronizando(true)
     try {
+      // Verificar que no haya un sync de fondo corriendo
+      if (isSyncEnProgreso()) {
+        mostrarAlerta({ titulo: "Sincronización en Progreso", mensaje: "Ya hay una sincronización automática de fondo ejecutándose. Esperá a que termine y volvé a intentar.", tipo: "advertencia" })
+        setSincronizando(false)
+        return
+      }
       // 1. Subir cambios locales a la nube primero (resguarda el trabajo del analista para que no sea sobrescrito por datos viejos)
       const resSubida = await sincronizarLocalHaciaNube(user.uid)
       // 2. Descargar cambios de la nube a local segundo
