@@ -90,6 +90,35 @@ function EventTooltip({ evento, x, y, visible }) {
   )
 }
 
+// Mapeos de tracks multilinea para el modo expandido
+const LANES_INFO = [
+  { index: 0, label: "JAB" },
+  { index: 1, label: "RECTO / CROSS" },
+  { index: 2, label: "GANCHO / UPPER / SWING" },
+  { index: 3, label: "ESQUIVA / BLOQUEO / PIVOTE" },
+  { index: 4, label: "CLINCH / FINTA" },
+  { index: 5, label: "GENERAL" },
+];
+
+const MAPEO_TRACKS = {
+  'Jab': 0,
+  'Recto': 1,
+  'Cross': 1,
+  'Gancho': 2,
+  'Uppercut': 2,
+  'Swing': 2,
+  'Esquiva': 3,
+  'Bloqueo': 3,
+  'Pivoteo': 3,
+  'Clinch': 4,
+  'Finta': 4,
+  'Marca General': 5,
+};
+
+const getTrackIndex = (tipo) => {
+  return MAPEO_TRACKS[tipo] ?? 5;
+};
+
 // ─── Componente Principal ──────────────────────────────────────────────────────
 export default function VideoTimelineOverlay({ 
   eventos = [], 
@@ -244,34 +273,7 @@ export default function VideoTimelineOverlay({
     })
   }, [eventosVisibles, posicionEvento])
 
-  // Mapeos de tracks multilinea para el modo expandido
-  const LANES_INFO = [
-    { index: 0, label: "JAB" },
-    { index: 1, label: "RECTO / CROSS" },
-    { index: 2, label: "GANCHO / UPPER / SWING" },
-    { index: 3, label: "ESQUIVA / BLOQUEO / PIVOTEO" },
-    { index: 4, label: "CLINCH / FINTA" },
-    { index: 5, label: "GENERAL" },
-  ];
 
-  const MAPEO_TRACKS = {
-    'Jab': 0,
-    'Recto': 1,
-    'Cross': 1,
-    'Gancho': 2,
-    'Uppercut': 2,
-    'Swing': 2,
-    'Esquiva': 3,
-    'Bloqueo': 3,
-    'Pivoteo': 3,
-    'Clinch': 4,
-    'Finta': 4,
-    'Marca General': 5,
-  };
-
-  const getTrackIndex = (tipo) => {
-    return MAPEO_TRACKS[tipo] ?? 5;
-  };
 
   const currentAlturaMarca = expanded ? 24 : ALTURA_MARCA
   const ALTURA_LANE = 54
