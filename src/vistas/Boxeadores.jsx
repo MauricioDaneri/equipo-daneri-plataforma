@@ -14,9 +14,27 @@ export default function Boxeadores() {
   const [boxeadorAEditar, setBoxeadorAEditar] = useState(null)
   const [busqueda, setBusqueda] = useState('')
 
-  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray()) || []
-  const sesionesDb = useLiveQuery(() => db.sesiones.toArray()) || []
-  const eventosDb = useLiveQuery(() => db.eventos.toArray()) || []
+  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray())
+  const sesionesDb = useLiveQuery(() => db.sesiones.toArray())
+  const eventosDb = useLiveQuery(() => db.eventos.toArray())
+
+  if (boxeadoresDb === undefined || sesionesDb === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Boxeadores...
+      </div>
+    );
+  }
 
   // --- Procesamiento de Datos Reales de Eficacia y Distribución ---
   const boxeadoresProcesados = useMemo(() => {

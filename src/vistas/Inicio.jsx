@@ -15,10 +15,28 @@ export default function Inicio() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTiempo, setFiltroTiempo] = useState('todo') // 'todo' | 'mes' | 'semana'
   
-  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray()) || []
-  const sesionesDb = useLiveQuery(() => db.sesiones.orderBy('fecha').reverse().toArray()) || []
-  const eventosDb = useLiveQuery(() => db.eventos.toArray()) || []
+  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray())
+  const sesionesDb = useLiveQuery(() => db.sesiones.orderBy('fecha').reverse().toArray())
+  const eventosDb = useLiveQuery(() => db.eventos.toArray())
   
+  if (boxeadoresDb === undefined || sesionesDb === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Panel de Control...
+      </div>
+    );
+  }
+
   // Total dinámico
   const totalBoxeadores = boxeadoresDb.length
   const totalSesiones = sesionesDb.length
@@ -234,35 +252,6 @@ export default function Inicio() {
         </div>
       </header>
 
-      {/* EINSTEIN PANEL — Insights Inteligentes */}
-      {alertasIA && alertasIA.length > 0 && (
-        <section>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <span style={{ fontSize: 18 }}>🧠</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-dorado)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Einstein — Insights del Período</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-            {alertasIA.map((alerta, i) => (
-              <div key={i} style={{
-                background: alerta.tipo === 'alerta'
-                  ? 'linear-gradient(90deg, rgba(231,76,60,0.1) 0%, rgba(231,76,60,0.03) 100%)'
-                  : alerta.tipo === 'exito'
-                  ? 'linear-gradient(90deg, rgba(46,204,113,0.1) 0%, rgba(46,204,113,0.03) 100%)'
-                  : 'linear-gradient(90deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.03) 100%)',
-                borderLeft: `3px solid ${alerta.tipo === 'alerta' ? 'var(--color-rojo-suave)' : alerta.tipo === 'exito' ? 'var(--color-exito)' : 'var(--color-dorado)'}`,
-                borderRadius: '4px 8px 8px 4px',
-                padding: '12px 16px',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10
-              }}>
-                <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>{alerta.icono}</span>
-                <span style={{ fontSize: 13, color: 'var(--color-texto)', lineHeight: '1.5' }}>{alerta.texto}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* QUICK ACTIONS & KPIs */}
       <section style={estilos.gridTop}>

@@ -193,12 +193,27 @@ export default function VideoTimelineOverlay({
     }
   }, [tiempoActual, eventos, duracion, autoZoomed, eventoSeleccionadoId])
 
-  // ─── Rueda del ratón → zoom ─────────────────────────────────────────────────
+  // ─── Rueda del ratón → zoom centrado en el playhead ─────────────────────────
   const handleWheel = useCallback((e) => {
     e.preventDefault()
-    const delta = e.deltaY > 0 ? -1 : 1
-    setZoom(prev => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + delta)))
-  }, [])
+    if (duracion === 0) return
+    const step = e.deltaY > 0 ? -1 : 1
+    
+    setZoom(prev => {
+      const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prev + step))
+      if (nextZoom === prev) return prev
+      
+      const posPlayhead = tiempoActual / duracion
+      // relative playhead position in current viewport (0 to 1)
+      const relPlayhead = (posPlayhead - scrollOffset) * prev
+      
+      // Calculate new scrollOffset so relative position stays the same
+      const nextScrollOffset = Math.max(0, Math.min(1 - 1 / nextZoom, posPlayhead - relPlayhead / nextZoom))
+      setScrollOffset(nextScrollOffset)
+      
+      return nextZoom
+    })
+  }, [duracion, tiempoActual, scrollOffset])
 
   useEffect(() => {
     const el = barraRef.current
@@ -542,6 +557,7 @@ export default function VideoTimelineOverlay({
           const cfg = getTipoEvento(ev.tipo)
           const estaEnComparacion = comparando.includes(ev)
           const esSeleccionado = ev.id === eventoSeleccionadoId
+          const isCompactDot = zoom < 4.0 && !esSeleccionado && hoveredMarkerId !== ev.id
 
           // Calcular posicion vertical segun el modo expandido (lanes fijas) o compact
           const top = expanded
@@ -551,27 +567,46 @@ export default function VideoTimelineOverlay({
           const hasDur = ev.duracion > 0
           const posStart = posicionEvento(ev)
 
+          let topAdjusted = top
+          let currentHeight = currentAlturaMarca
+
+          if (isCompactDot) {
+            if (hasDur) {
+              currentHeight = 6
+              topAdjusted = top + (currentAlturaMarca - 6) / 2
+            } else {
+              currentHeight = 10
+              topAdjusted = top + (currentAlturaMarca - 10) / 2
+            }
+          }
+
           let markerStyle = {
             position: 'absolute',
-            top,
-            height: currentAlturaMarca,
-            borderRadius: 6,
-            background: cfg.color + (esSeleccionado ? '77' : estaEnComparacion ? '66' : '22'),
+            top: topAdjusted,
+            height: currentHeight,
+            borderRadius: isCompactDot ? (hasDur ? 3 : '50%') : 6,
+            background: isCompactDot
+              ? (hasDur ? cfg.color : (COLORES_RINCON[ev.esquina] || cfg.color))
+              : (cfg.color + (esSeleccionado ? '77' : estaEnComparacion ? '66' : '22')),
             border: esSeleccionado
               ? `2px solid var(--color-dorado)`
-              : `1px solid ${cfg.color}${estaEnComparacion ? 'ff' : '77'}`,
+              : isCompactDot
+                ? `1px solid rgba(255,255,255,0.75)`
+                : `1px solid ${cfg.color}${estaEnComparacion ? 'ff' : '77'}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 4,
-            padding: '0 6px',
+            gap: isCompactDot ? 0 : 4,
+            padding: isCompactDot ? 0 : '0 6px',
             cursor: 'pointer',
-            transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
+            transition: 'all 0.15s ease',
             boxShadow: esSeleccionado 
               ? `0 0 12px var(--color-dorado)` 
-              : estaEnComparacion 
-                ? `0 0 8px ${cfg.color}` 
-                : 'none',
+              : isCompactDot
+                ? `0 0 6px ${cfg.color}`
+                : estaEnComparacion 
+                  ? `0 0 8px ${cfg.color}` 
+                  : 'none',
             zIndex: esSeleccionado ? 15 : estaEnComparacion ? 10 : (hoveredMarkerId === ev.id ? 8 : 1),
             overflow: 'hidden',
           }
@@ -582,14 +617,15 @@ export default function VideoTimelineOverlay({
               ...markerStyle,
               left: `${posStart}%`,
               width: `${widthPercent}%`,
-              minWidth: 32,
+              minWidth: isCompactDot ? 12 : 32,
               transform: 'none',
-              justifyContent: 'flex-start',
+              justifyContent: isCompactDot ? 'center' : 'flex-start',
             }
           } else {
             markerStyle = {
               ...markerStyle,
               left: `${posStart}%`,
+              width: isCompactDot ? 10 : 'auto',
               transform: 'translateX(-50%)',
             }
           }
@@ -610,66 +646,72 @@ export default function VideoTimelineOverlay({
               }}
               style={markerStyle}
             >
-              {/* Indicador de esquina */}
-              {ev.esquina && ev.esquina !== 'general' && (
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: COLORES_RINCON[ev.esquina],
-                  flexShrink: 0
-                }} />
-              )}
-              {/* Correlativo number / ID */}
-              <span style={{ 
-                fontSize: expanded ? 10 : 9, 
-                fontWeight: 750, 
-                color: esSeleccionado || estaEnComparacion ? 'var(--color-texto)' : cfg.color, 
-                fontFamily: 'monospace',
-                whiteSpace: 'nowrap'
-              }}>
-                {cfg.shortName} {ev._numero ?? ''}
-              </span>
-              {/* Ícono del evento */}
-              <span style={{ fontSize: 10, color: esSeleccionado || estaEnComparacion ? 'var(--color-texto)' : cfg.color }}>
-                {cfg.icon}
-              </span>
+              {!isCompactDot ? (
+                <>
+                  {/* Indicador de esquina */}
+                  {ev.esquina && ev.esquina !== 'general' && (
+                    <span style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: COLORES_RINCON[ev.esquina],
+                      flexShrink: 0
+                    }} />
+                  )}
+                  {/* Correlativo number / ID */}
+                  <span style={{ 
+                    fontSize: expanded ? 10 : 9, 
+                    fontWeight: 750, 
+                    color: esSeleccionado || estaEnComparacion ? 'var(--color-texto)' : cfg.color, 
+                    fontFamily: 'monospace',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {cfg.shortName} {ev._numero ?? ''}
+                  </span>
+                  {/* Ícono del evento */}
+                  <span style={{ fontSize: 10, color: esSeleccionado || estaEnComparacion ? 'var(--color-texto)' : cfg.color }}>
+                    {cfg.icon}
+                  </span>
 
-              {/* Muestra la duración si cabe */}
-              {hasDur && ev.duracion > 0.5 && (
-                <span style={{ 
-                  marginLeft: 'auto', 
-                  fontSize: 8, 
-                  opacity: 0.7, 
-                  color: 'var(--color-texto-muted)', 
-                  paddingRight: 6, 
-                  fontFamily: 'monospace' 
-                }}>
-                  {ev.duracion.toFixed(1)}s
-                </span>
-              )}
+                  {/* Muestra la duración si cabe */}
+                  {hasDur && ev.duracion > 0.5 && (
+                    <span style={{ 
+                      marginLeft: 'auto', 
+                      fontSize: 8, 
+                      opacity: 0.7, 
+                      color: 'var(--color-texto-muted)', 
+                      paddingRight: 6, 
+                      fontFamily: 'monospace' 
+                    }}>
+                      {ev.duracion.toFixed(1)}s
+                    </span>
+                  )}
 
-              {/* Handle de redimensionamiento de duración a la derecha */}
-              <div
-                onMouseDown={(e) => handleMouseDownResize(e, ev)}
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 8,
-                  cursor: 'ew-resize',
-                  borderRadius: '0 5px 5px 0',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background 0.2s',
-                  zIndex: 20,
-                }}
-                onMouseEnter={(e) => { e.stopPropagation(); e.target.style.background = 'rgba(255, 255, 255, 0.2)' }}
-                onMouseLeave={(e) => { e.stopPropagation(); e.target.style.background = 'rgba(255, 255, 255, 0.08)' }}
-                title="Arrastrar para ajustar duración"
-              />
+                  {/* Handle de redimensionamiento de duración a la derecha */}
+                  {hasDur && (
+                    <div
+                      onMouseDown={(e) => handleMouseDownResize(e, ev)}
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 8,
+                        cursor: 'ew-resize',
+                        borderRadius: '0 5px 5px 0',
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'background 0.2s',
+                        zIndex: 20,
+                      }}
+                      onMouseEnter={(e) => { e.stopPropagation(); e.target.style.background = 'rgba(255, 255, 255, 0.2)' }}
+                      onMouseLeave={(e) => { e.stopPropagation(); e.target.style.background = 'rgba(255, 255, 255, 0.08)' }}
+                      title="Arrastrar para ajustar duración"
+                    />
+                  )}
+                </>
+              ) : null}
             </div>
           )
         })}

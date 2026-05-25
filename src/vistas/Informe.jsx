@@ -20,9 +20,18 @@ export default function Informe() {
   const [notasDT, setNotasDT] = useState('')
   const [activeTab, setActiveTab] = useState('data') // 'data' | 'written'
   const [esquinaHeatmap, setEsquinaHeatmap] = useState('roja') // 'roja' | 'azul'
+  const [appVersion, setAppVersion] = useState('v2.0')
+
+  useEffect(() => {
+    if (window.api?.getVersion) {
+      window.api.getVersion().then(v => {
+        if (v) setAppVersion(`v${v}`)
+      }).catch(err => console.error(err))
+    }
+  }, [])
 
   const sesion      = useLiveQuery(() => db.sesiones.get(Number(id)), [id])
-  const eventosRaw  = useLiveQuery(() => db.eventos.where('sesionId').equals(Number(id)).toArray(), [id]) || []
+  const eventosRaw  = useLiveQuery(() => db.eventos.where('sesionId').equals(Number(id)).toArray(), [id])
   const boxeadorR   = useLiveQuery(() => sesion ? db.boxeadores.get(sesion.boxeadorRojoId) : null, [sesion])
   const boxeadorA   = useLiveQuery(() => sesion ? db.boxeadores.get(sesion.boxeadorAzulId) : null, [sesion])
 
@@ -250,7 +259,23 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
     })
   }
 
-  if (sesion === undefined) return <div style={{padding:40,color:'var(--color-texto)'}}>Cargando sesión…</div>
+  if (sesion === undefined || eventosRaw === undefined || boxeadorR === undefined || boxeadorA === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Dossier Técnico...
+      </div>
+    );
+  }
 
   const nombreR = boxeadorR?.nombre || 'Rincón Rojo'
   const nombreA = boxeadorA?.nombre || 'Rincón Azul'
@@ -305,7 +330,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
       </div>
 
       {/* ── CONTENIDO SCROLLABLE ─────────────────────────────────── */}
-      <div style={{ flex:1, overflowY:'auto', padding:'32px 24px', display:'flex', justifyContent:'center' }}>
+      <div style={{ flex:1, overflowY:'auto', padding:'32px 24px 64px 24px', display:'flex', justifyContent:'center' }}>
         <div style={{ width:'100%', maxWidth:1020, display:'flex', flexDirection:'column', gap:28 }}>
 
           {/* Encabezado Principal de Lujo con Logo oficial */}
@@ -527,7 +552,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px dashed var(--color-borde)', paddingBottom: 12 }}>
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-dorado)' }}>SCOUTING & TACTICAL REPORT</div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-dorado)' }}>INFORME TÁCTICO Y SCOUTING</div>
                           <div style={{ fontSize: 11, color: 'var(--color-texto-suave)' }}>Analista Principal: Mauricio Daneri</div>
                         </div>
                         <Award size={36} color="rgba(212,175,55,0.3)" />
@@ -542,7 +567,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
                       <div style={{ borderTop: '1px solid var(--color-borde)', marginTop: 30, paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--color-texto)' }}>MAURICIO DANERI</div>
-                          <div style={{ fontSize: 10, color: 'var(--color-texto-suave)', textTransform: 'uppercase', letterSpacing: 1 }}>Head Coach · Equipo Daneri</div>
+                          <div style={{ fontSize: 10, color: 'var(--color-texto-suave)', textTransform: 'uppercase', letterSpacing: 1 }}>Analista · Equipo Daneri</div>
                         </div>
                         <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--color-texto-muted)' }}>ID: #00{sesion.id}</span>
                       </div>
@@ -599,11 +624,11 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
                   <Award size={28} color="var(--color-dorado)"/>
                   <div>
                     <div style={{ color:'var(--color-texto)', fontSize:13, fontWeight:800 }}>MAURICIO DANERI</div>
-                    <div style={{ color:'var(--color-texto-suave)', fontSize:10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Head Coach · Equipo Daneri</div>
+                    <div style={{ color:'var(--color-texto-suave)', fontSize:10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Analista · Equipo Daneri</div>
                   </div>
                 </div>
                 <div style={{ textAlign:'right', fontSize:10, color:'var(--color-texto-muted)' }}>
-                  <div>Generado por Plataforma Daneri v2.0</div>
+                  <div>Generado por Plataforma Daneri {appVersion}</div>
                   <div>© 2026 Equipo Daneri Analytics</div>
                 </div>
               </div>
@@ -634,7 +659,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
               />
               <div>
                 <h1 style={{ margin: 0, fontSize: 18, color: '#F0F0F0', fontWeight: 800, letterSpacing: '0.05em' }}>EQUIPO DANERI</h1>
-                <p style={{ margin: 0, fontSize: 10, color: '#D4AF37', fontWeight: 700, letterSpacing: '0.2em' }}>TACTICAL SCOUTING REPORT</p>
+                <p style={{ margin: 0, fontSize: 10, color: '#D4AF37', fontWeight: 700, letterSpacing: '0.2em' }}>INFORME TÁCTICO Y SCOUTING</p>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -786,7 +811,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
               />
               <div>
                 <h1 style={{ margin: 0, fontSize: 18, color: '#F0F0F0', fontWeight: 800, letterSpacing: '0.05em' }}>EQUIPO DANERI</h1>
-                <p style={{ margin: 0, fontSize: 10, color: '#D4AF37', fontWeight: 700, letterSpacing: '0.2em' }}>TACTICAL EVALUATION REPORT</p>
+                <p style={{ margin: 0, fontSize: 10, color: '#D4AF37', fontWeight: 700, letterSpacing: '0.2em' }}>INFORME TÁCTICO Y SCOUTING</p>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -828,7 +853,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
               <Award size={24} color="#D4AF37"/>
               <div>
                 <div style={{ color: '#F0F0F0', fontSize: 11, fontWeight: 800 }}>MAURICIO DANERI</div>
-                <div style={{ color: '#9A9A9A', fontSize: 8, textTransform: 'uppercase' }}>Head Coach · Equipo Daneri</div>
+                <div style={{ color: '#9A9A9A', fontSize: 8, textTransform: 'uppercase' }}>Analista · Equipo Daneri</div>
               </div>
             </div>
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>

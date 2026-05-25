@@ -402,6 +402,10 @@ export default function EditorTactico() {
 
   const [tamanioLapiz, setTamanioLapiz] = useState(4);
   const [objetosDibujo, setObjetosDibujo] = useState([]);
+  const [terminoBusqueda, setTerminoBusqueda] = useState("");
+  const [filtroRound, setFiltroRound] = useState("todos");
+  const [filtroEstadisticasRound, setFiltroEstadisticasRound] = useState("todos");
+  const [cargandoDatos, setCargandoDatos] = useState(true);
 
   const eventosConNumero = useMemo(() => {
     const ordenados = [...timeline].sort((a, b) => a.timestamp - b.timestamp);
@@ -412,6 +416,39 @@ export default function EditorTactico() {
       return { ...ev, _numero: conteo[ev.tipo] };
     });
   }, [timeline]);
+
+  const eventosFiltrados = useMemo(() => {
+    let filtrados = eventosConNumero;
+
+    if (filtroRound !== "todos") {
+      filtrados = filtrados.filter(ev => ev.round === Number(filtroRound));
+    }
+
+    if (terminoBusqueda.trim() !== "") {
+      const q = terminoBusqueda.toLowerCase().trim();
+      const nombreR = boxeadoresDb.find(b => b.id.toString() === boxeadorRojoId)?.nombre?.toLowerCase() || "";
+      const nombreA = boxeadoresDb.find(b => b.id.toString() === boxeadorAzulId)?.nombre?.toLowerCase() || "";
+
+      filtrados = filtrados.filter(ev => {
+        const matchTipo = ev.tipo.toLowerCase().includes(q);
+        const matchNota = ev.nota?.toLowerCase().includes(q);
+        const matchEsquina = ev.esquina?.toLowerCase().includes(q);
+        
+        let matchBoxeador = false;
+        if (ev.esquina === "roja" && nombreR.includes(q)) matchBoxeador = true;
+        if (ev.esquina === "azul" && nombreA.includes(q)) matchBoxeador = true;
+
+        return matchTipo || matchNota || matchEsquina || matchBoxeador;
+      });
+    }
+
+    return filtrados;
+  }, [eventosConNumero, filtroRound, terminoBusqueda, boxeadoresDb, boxeadorRojoId, boxeadorAzulId]);
+
+  const timelineFiltradaParaStats = useMemo(() => {
+    if (filtroEstadisticasRound === "todos") return timeline;
+    return timeline.filter(ev => ev.round === Number(filtroEstadisticasRound));
+  }, [timeline, filtroEstadisticasRound]);
 
   // --- Clean Analysis Mode ---
   const [analisisLimpio, setAnalisisLimpio] = useState(false);
@@ -692,8 +729,8 @@ export default function EditorTactico() {
 
   // --- Real-time statistics derived state ---
   const statsBoxeador = useMemo(() => {
-    return clasificarPerfiles(timeline, esquinaDestino);
-  }, [timeline, esquinaDestino]);
+    return clasificarPerfiles(timelineFiltradaParaStats, esquinaDestino);
+  }, [timelineFiltradaParaStats, esquinaDestino]);
 
   // --- Speech (STT) Setup ---
   useEffect(() => {
@@ -1193,57 +1230,66 @@ export default function EditorTactico() {
   // --- Load Session ---
   useEffect(() => {
     if (id) {
+      setCargandoDatos(true);
       const cargarSesion = async () => {
-        const sesion = await db.sesiones.get(Number(id));
-        if (sesion) {
-          setBoxeadorRojoId(sesion.boxeadorRojoId.toString());
-          setBoxeadorAzulId(sesion.boxeadorAzulId.toString());
+        try {
+          const sesion = await db.sesiones.get(Number(id));
+          if (sesion) {
+            setBoxeadorRojoId(sesion.boxeadorRojoId.toString());
+            setBoxeadorAzulId(sesion.boxeadorAzulId.toString());
 
-          let cleanPath = sesion.videoPath || "";
-          if (cleanPath.startsWith("daneri-file:///")) {
-            cleanPath = decodeURIComponent(cleanPath.replace("daneri-file:///", ""));
-          } else if (cleanPath.startsWith("daneri-file://")) {
-            cleanPath = decodeURIComponent(cleanPath.replace("daneri-file://", ""));
-          }
+            let cleanPath = sesion.videoPath || "";
+            if (cleanPath.startsWith("daneri-file:///")) {
+              cleanPath = decodeURIComponent(cleanPath.replace("daneri-file:///", ""));
+            } else if (cleanPath.startsWith("daneri-file://")) {
+              cleanPath = decodeURIComponent(cleanPath.replace("daneri-file://", ""));
+            }
 
-          setVideoAbsolutePath(cleanPath);
-          setVideoNombre(cleanPath.split(/[/\\]/).pop());
+            setVideoAbsolutePath(cleanPath);
+            setVideoNombre(cleanPath.split(/[/\\]/).pop());
 
-          if (cleanPath && !cleanPath.startsWith("blob:") && window.api?.video?.cargarDesdeRuta) {
-            const res = await window.api.video.cargarDesdeRuta(cleanPath);
-            if (res.ok) {
-              setVideoUrl(res.url);
-              setVideoNombre(res.nombre);
-              setVideoFaltante(false);
+            if (cleanPath && !cleanPath.startsWith("blob:") && window.api?.video?.cargarDesdeRuta) {
+              const res = await window.api.video.cargarDesdeRuta(cleanPath);
+              if (res.ok) {
+                setVideoUrl(res.url);
+                setVideoNombre(res.nombre);
+                setVideoFaltante(false);
+              } else {
+                setVideoFaltante(true);
+                setVideoUrl("");
+              }
+            } else if (cleanPath && cleanPath.startsWith("blob:")) {
+              // En web, las URLs blob se vencen al recargar, así que se fuerza a vincular de nuevo
+              setVideoFaltante(true);
+              setVideoUrl("");
             } else {
               setVideoFaltante(true);
               setVideoUrl("");
             }
-          } else if (cleanPath && cleanPath.startsWith("blob:")) {
-            // En web, las URLs blob se vencen al recargar, así que se fuerza a vincular de nuevo
-            setVideoFaltante(true);
-            setVideoUrl("");
-          } else {
-            setVideoFaltante(true);
-            setVideoUrl("");
-          }
 
-          if (sesion.roundStarts) {
-            setRoundStarts(sesion.roundStarts);
-          }
+            if (sesion.roundStarts) {
+              setRoundStarts(sesion.roundStarts);
+            }
 
-          if (sesion.rounds) {
-            setTotalRounds(Number(sesion.rounds));
-          }
+            if (sesion.rounds) {
+              setTotalRounds(Number(sesion.rounds));
+            }
 
-          const eventos = await db.eventos
-            .where("sesionId")
-            .equals(Number(id))
-            .toArray();
-          setTimeline(eventos.sort((a, b) => b.timestamp - a.timestamp));
+            const eventos = await db.eventos
+              .where("sesionId")
+              .equals(Number(id))
+              .toArray();
+            setTimeline(eventos.sort((a, b) => b.timestamp - a.timestamp));
+          }
+        } catch (e) {
+          console.error("Error al cargar sesión:", e);
+        } finally {
+          setCargandoDatos(false);
         }
       };
       cargarSesion();
+    } else {
+      setCargandoDatos(false);
     }
   }, [id]);
 
@@ -2714,6 +2760,27 @@ export default function EditorTactico() {
     window.addEventListener("keydown", handleKeyDownModal);
     return () => window.removeEventListener("keydown", handleKeyDownModal);
   }, [eventoAEditar, pushStateToHistory]);
+
+  if (cargandoDatos || !boxeadoresDb) {
+    return (
+      <div
+        style={{
+          height: "100%",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--color-fondo)",
+          color: "var(--color-dorado)",
+          fontSize: 13,
+          textTransform: "uppercase",
+          letterSpacing: "0.15em",
+        }}
+      >
+        Cargando Editor Táctico...
+      </div>
+    );
+  }
 
   return (
     <div style={estilos.pagina}>
@@ -4342,6 +4409,52 @@ export default function EditorTactico() {
                       overflow: "hidden",
                     }}
                   >
+                    {/* BARRA DE FILTROS Y BÚSQUEDA */}
+                    <div style={{
+                      display: "flex",
+                      gap: 8,
+                      padding: "10px 14px",
+                      background: "rgba(255, 255, 255, 0.02)",
+                      borderBottom: "1px solid var(--color-borde)",
+                      alignItems: "center"
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="Buscar golpes, notas..."
+                        value={terminoBusqueda}
+                        onChange={(e) => setTerminoBusqueda(e.target.value)}
+                        style={{
+                          flex: 1,
+                          background: "var(--color-superficie-2)",
+                          border: "1px solid var(--color-borde)",
+                          borderRadius: 16,
+                          color: "var(--color-texto)",
+                          fontSize: 11,
+                          padding: "6px 12px",
+                          outline: "none"
+                        }}
+                      />
+                      <select
+                        value={filtroRound}
+                        onChange={(e) => setFiltroRound(e.target.value)}
+                        style={{
+                          background: "var(--color-superficie-2)",
+                          border: "1px solid var(--color-borde)",
+                          borderRadius: 16,
+                          color: "var(--color-texto)",
+                          fontSize: 11,
+                          padding: "6px 10px",
+                          outline: "none",
+                          cursor: "pointer",
+                          maxWidth: 100
+                        }}
+                      >
+                        <option value="todos">Todos Rnd</option>
+                        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
+                          <option key={r} value={r.toString()}>Round {r}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div style={estilos.timelineLista}>
                       <AnimatePresence>
                         {timeline.length === 0 ? (
@@ -4455,7 +4568,7 @@ export default function EditorTactico() {
                             </div>
                           </div>
                         ) : (
-                          eventosConNumero.map((ev) => (
+                          eventosFiltrados.map((ev) => (
                             <motion.div
                               key={ev.id}
                               id={`ev-list-item-${ev.id}`}
@@ -4465,14 +4578,7 @@ export default function EditorTactico() {
                                   videoRef.current.currentTime = ev.timestamp;
                                   setCurrentTime(ev.timestamp);
                                 }
-                                // Focus corresponding panel tab (exclusivity for punches)
-                                const esMappable = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo);
-                                if (esMappable) {
-                                  setPanelActivo("mapa");
-                                } else if (panelActivo === "mapa") {
-                                  setPanelActivo("timeline");
-                                }
-                                // Restore drawing if available
+                                // Clic simple: Buscamos y seleccionamos, pero permanecemos en la pestaña "Línea" (timeline)
                                 if (fabricCanvasRef.current) {
                                   if (ev.canvasData) {
                                     try {
@@ -4492,6 +4598,23 @@ export default function EditorTactico() {
                                     fabricCanvasRef.current.clear();
                                     actualizarObjetosDibujo();
                                   }
+                                }
+                              }}
+                              onDoubleClick={() => {
+                                // Doble clic: abre modal de edición de notas de inmediato
+                                setEventoAEditar(ev);
+                              }}
+                              onContextMenu={(e) => {
+                                // Clic derecho: selecciona evento, busca video y enfoca pestaña "mapa" para mapeo guiado corporal
+                                e.preventDefault();
+                                setEventoSeleccionadoId(ev.id);
+                                if (videoRef.current) {
+                                  videoRef.current.currentTime = ev.timestamp;
+                                  setCurrentTime(ev.timestamp);
+                                }
+                                const esMappable = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo);
+                                if (esMappable) {
+                                  setPanelActivo("mapa");
                                 }
                               }}
                               style={{
@@ -4799,7 +4922,39 @@ export default function EditorTactico() {
                       gap: 16,
                     }}
                   >
-
+                    {/* SELECTOR DE ROUND PARA ESTADÍSTICAS */}
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      background: "rgba(255, 255, 255, 0.02)",
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: "1px solid var(--color-borde)"
+                    }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-dorado)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Filtrar Asalto:
+                      </span>
+                      <select
+                        value={filtroEstadisticasRound}
+                        onChange={(e) => setFiltroEstadisticasRound(e.target.value)}
+                        style={{
+                          background: "var(--color-superficie-2)",
+                          border: "1px solid var(--color-borde)",
+                          borderRadius: 6,
+                          color: "var(--color-texto)",
+                          fontSize: 11,
+                          padding: "4px 8px",
+                          outline: "none",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <option value="todos">Combate Completo</option>
+                        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
+                          <option key={r} value={r.toString()}>Round {r}</option>
+                        ))}
+                      </select>
+                    </div>
 
                     {/* KPIs */}
                     <div

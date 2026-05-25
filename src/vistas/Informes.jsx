@@ -11,9 +11,27 @@ export default function Informes() {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todo') // 'todo' | 'Sparring' | 'Guanteo' | 'Combate'
 
-  const sessionsDb = useLiveQuery(() => db.sesiones.orderBy('fecha').reverse().toArray()) || []
-  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray()) || []
-  const eventosDb = useLiveQuery(() => db.eventos.toArray()) || []
+  const sessionsDb = useLiveQuery(() => db.sesiones.orderBy('fecha').reverse().toArray())
+  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray())
+  const eventosDb = useLiveQuery(() => db.eventos.toArray())
+
+  if (sessionsDb === undefined || boxeadoresDb === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Informes...
+      </div>
+    );
+  }
 
   // Mapeo rápido de boxeadores para resolver nombres
   const boxeadoresMap = useMemo(() => {

@@ -116,9 +116,27 @@ export default function Sesiones() {
     }
   }, [location.state])
 
-  const sesionesRaw = useLiveQuery(() => db.sesiones.toArray()) || []
-  const boxeadores = useLiveQuery(() => db.boxeadores.toArray()) || []
-  const eventosDb = useLiveQuery(() => db.eventos.toArray()) || []
+  const sesionesRaw = useLiveQuery(() => db.sesiones.toArray())
+  const boxeadores = useLiveQuery(() => db.boxeadores.toArray())
+  const eventosDb = useLiveQuery(() => db.eventos.toArray())
+
+  if (sesionesRaw === undefined || boxeadores === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Sesiones...
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (boxeadores.length > 0) {
