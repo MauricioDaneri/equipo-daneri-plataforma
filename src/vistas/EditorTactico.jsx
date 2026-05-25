@@ -3739,11 +3739,8 @@ export default function EditorTactico() {
             {/* HUD DE INTENSIDAD EN TIEMPO REAL */}
             {videoUrl && !analisisLimpio && (
               <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{
-                  duration: 0.2,
-                  repeat: intensidadRT.intensidad > 80 ? Infinity : 0,
-                }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3 }}
                 style={{
                   position: "absolute",
                   top: 20,

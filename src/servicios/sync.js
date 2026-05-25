@@ -107,12 +107,10 @@ export async function sincronizarLocalHaciaNube(uid) {
     const configuracion = await db.configuracion.toArray()
     const analistas = await db.analistas.toArray()
 
-    // Helper para subir datos en batches de 10 con throttling y retry
-    const BATCH_SIZE = 10
-    const BATCH_DELAY_MS = 300 // 300ms entre batches para no saturar el stream
+    // Helper para subir datos con throttling dinámico y reintentos con backoff
     const MAX_RETRIES = 3
 
-    const subirColeccion = async (nombreColeccion, items) => {
+    const subirColeccion = async (nombreColeccion, items, sizeLimit = 10, delayMs = 300) => {
       if (!items || items.length === 0) return
 
       let batch = writeBatch(dbFirestore)
@@ -143,9 +141,9 @@ export async function sincronizarLocalHaciaNube(uid) {
         batch.set(docRef, itemToSync)
         contador++
 
-        if (contador === BATCH_SIZE) {
+        if (contador === sizeLimit) {
           await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
-          await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+          await new Promise(resolve => setTimeout(resolve, delayMs))
           batch = writeBatch(dbFirestore)
           contador = 0
         }
@@ -153,17 +151,28 @@ export async function sincronizarLocalHaciaNube(uid) {
 
       if (contador > 0) {
         await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+        await new Promise(resolve => setTimeout(resolve, delayMs))
       }
     }
 
-    // Ejecutar subidas ordenadas
-    await subirColeccion('boxeadores', boxeadores)
-    await subirColeccion('sesiones', sesiones)
-    await subirColeccion('eventos', eventos)
-    await subirColeccion('anotaciones', anotaciones)
-    await subirColeccion('configuracion', configuracion)
-    await subirColeccion('analistas', analistas)
+    // Ejecutar subidas ordenadas con throttling adaptativo y períodos de enfriamiento (cooldown)
+    // para permitir al SDK de Firestore vaciar su write stream interno y evitar resource-exhausted.
+    await subirColeccion('boxeadores', boxeadores, 5, 500) // Lote pequeño por fotos base64
+    await new Promise(resolve => setTimeout(resolve, 1200)) // Enfriamiento entre colecciones
+    
+    await subirColeccion('sesiones', sesiones, 10, 400)
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    
+    await subirColeccion('eventos', eventos, 100, 600) // Lote grande y espaciado para reducir 90% los commits
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    
+    await subirColeccion('anotaciones', anotaciones, 10, 500) // Puede contener JSONs pesados de Fabric
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    
+    await subirColeccion('configuracion', configuracion, 20, 300)
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    
+    await subirColeccion('analistas', analistas, 20, 300)
 
     console.log('[Sync] Sincronización de local a nube finalizada con éxito.')
     return {

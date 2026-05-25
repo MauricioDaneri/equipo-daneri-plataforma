@@ -512,7 +512,7 @@ export default function VideoTimelineOverlay({
         )}
 
         {/* Marcadores verticales de inicio de asaltos (Rounds) */}
-        {duracion > 0 && Array.from({ length: totalRounds - 1 }, (_, i) => i + 2).map(r => {
+        {duracion > 0 && Array.from({ length: totalRounds }, (_, i) => i + 1).map(r => {
           const startTime = roundStarts[r];
           if (startTime === undefined || startTime === null || startTime > duracion) return null;
           const pct = ((startTime / duracion - scrollOffset) * zoom) * 100;
