@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Save, Server, User, AlertTriangle, Trash2, ShieldAlert, Keyboard, Plus, UserCheck, HelpCircle, Upload, Download } from 'lucide-react'
+import { Save, Server, User, AlertTriangle, Trash2, ShieldAlert, Keyboard, Plus, UserCheck, HelpCircle, Upload, Download, Cloud, CloudLightning, RefreshCw } from 'lucide-react'
 import { db } from '../servicios/db'
 import { useModal } from '../context/ModalContext'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { auth } from '../servicios/firebase'
+import { sincronizarLocalHaciaNube, sincronizarNubeHaciaLocal } from '../servicios/sync'
 
 // Default hotkeys en caso de que falten en la DB
 const defaultHotkeys = {
@@ -58,6 +60,48 @@ export default function Ajustes() {
   const [capturando, setCapturando] = useState(null) // ID del atajo que estamos escuchando
   const analistasDb = useLiveQuery(() => db.analistas.toArray()) || []
   const [nuevoAnalista, setNuevoAnalista] = useState({ nombre: '', rol: '' })
+
+  const [sincronizando, setSincronizando] = useState(false)
+  const [ultimoSync, setUltimoSync] = useState(localStorage.getItem('ultimo_sync') || 'Nunca')
+  const [usuarioEmail, setUsuarioEmail] = useState(auth.currentUser?.email || '')
+
+  const handleSincronizarNube = async () => {
+    const user = auth.currentUser
+    if (!user) {
+      mostrarAlerta({ titulo: "Usuario no autenticado", mensaje: "Debes iniciar sesión para sincronizar tus datos con la nube.", tipo: "advertencia" })
+      return
+    }
+
+    setSincronizando(true)
+    try {
+      // 1. Descargar cambios de la nube a local
+      const resDescarga = await sincronizarNubeHaciaLocal(user.uid)
+      // 2. Subir cambios locales a la nube
+      const resSubida = await sincronizarLocalHaciaNube(user.uid)
+
+      const timestamp = new Date().toLocaleString()
+      localStorage.setItem('ultimo_sync', timestamp)
+      setUltimoSync(timestamp)
+
+      mostrarAlerta({
+        titulo: "Sincronización Completa",
+        mensaje: `Los datos se han sincronizado con la nube de forma bidireccional:\n\n` +
+                 `- Atletas en la nube: ${resDescarga.boxeadoresCount}\n` +
+                 `- Sesiones en la nube: ${resDescarga.sesionesCount}\n` +
+                 `- Marcas/Eventos en la nube: ${resDescarga.eventosCount}`,
+        tipo: "exito"
+      })
+    } catch (err) {
+      console.error('[Cloud Sync] Error durante la sincronización:', err)
+      mostrarAlerta({
+        titulo: "Error de Sincronización",
+        mensaje: "No se pudo completar la sincronización con la nube. Revisa tu conexión a internet o los logs de error.",
+        tipo: "peligro"
+      })
+    } finally {
+      setSincronizando(false)
+    }
+  }
 
   useEffect(() => {
     db.configuracion.get(1).then(data => {
@@ -309,6 +353,47 @@ export default function Ajustes() {
               <input type="text" placeholder="Rol" value={nuevoAnalista.rol} onChange={e => setNuevoAnalista({...nuevoAnalista, rol: e.target.value})} style={{ ...estilos.input, flex: 1, padding: '8px 12px' }} />
               <button type="submit" className="boton-secundario" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus size={16} /></button>
             </form>
+          </div>
+
+          {/* --- Sincronización en la Nube --- */}
+          <div className="tarjeta" style={{ ...estilos.tarjeta, border: '1px solid rgba(212, 175, 55, 0.25)' }}>
+            <div style={estilos.headerTarjeta}>
+              <Cloud size={20} color="var(--color-dorado)" />
+              <h2 style={estilos.tituloTarjeta}>Sincronización en la Nube (Firebase)</h2>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--color-texto-suave)', margin: 0, lineHeight: 1.5 }}>
+              Guarda tus análisis, marcas tácticas y fichas de boxeadores en tu cuenta. Los videos locales pesados no se subirán para ahorrar ancho de banda y almacenamiento.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--color-superficie-2)', padding: 12, borderRadius: 8, border: '1px solid var(--color-borde)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                <span style={{ color: 'var(--color-texto-suave)' }}>Analista Conectado:</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-dorado)' }}>{usuarioEmail || 'Invitado offline'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                <span style={{ color: 'var(--color-texto-suave)' }}>Último Respaldo Nube:</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-texto)' }}>{ultimoSync}</span>
+              </div>
+            </div>
+
+            <button 
+              className="boton-primario" 
+              onClick={handleSincronizarNube} 
+              disabled={sincronizando}
+              style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', padding: '12px 16px', fontSize: 13, background: 'linear-gradient(to right, #B38F2D, #D4AF37)', color: 'black', border: 'none' }}
+            >
+              {sincronizando ? (
+                <>
+                  <RefreshCw size={16} className="spin" style={{ animation: 'spin 1.5s linear infinite' }} />
+                  Sincronizando con la Nube...
+                </>
+              ) : (
+                <>
+                  <CloudLightning size={16} />
+                  Sincronizar Ahora (PC ⇄ Nube)
+                </>
+              )}
+            </button>
           </div>
 
           {/* --- Respaldo y Diagnóstico (Backup & Diagnostics) --- */}

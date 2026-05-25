@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Search, Eye, Play, Plus, MonitorPlay, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Activity, Users, Trash2 } from 'lucide-react'
+import { Search, Eye, Play, Plus, MonitorPlay, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Activity, Users, Trash2, Upload, Share2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../servicios/db'
 import PanelAnalisis from '../components/ui/PanelAnalisis'
@@ -7,15 +7,95 @@ import ModalNuevaSesion from '../components/ui/ModalNuevaSesion'
 import ModalConfirmacion from '../components/ui/ModalConfirmacion'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useModal } from '../context/ModalContext'
+import { exportarSesionAShowfile, importarShowfileEnEquipo } from '../utils/showfile'
 
 export default function Sesiones() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { mostrarConfirmacion, mostrarAlerta } = useModal()
   const [vistaActiva, setVistaActiva] = useState('calendario') // 'calendario' | 'lista' | 'comparativa'
   const [panelAbierto, setPanelAbierto] = useState(false)
   const [modalNuevaSesionAbierto, setModalNuevaSesionAbierto] = useState(false)
   const [sesionSeleccionada, setSesionSeleccionada] = useState(null)
   const [sesionAEliminar, setSesionAEliminar] = useState(null)
+  const [importando, setImportando] = useState(false)
+
+  const handleExportarShowfile = async (sesionId) => {
+    try {
+      await exportarSesionAShowfile(sesionId)
+      mostrarAlerta({
+        titulo: "Showfile Exportado",
+        mensaje: "El showfile .daneri se ha generado y descargado con éxito. Podés llevarlo a otra PC en un pendrive.",
+        tipo: "exito"
+      })
+    } catch (error) {
+      console.error('[Showfile Export] Error:', error)
+      mostrarAlerta({
+        titulo: "Error al Exportar",
+        mensaje: "Hubo un problema al exportar el Showfile de la sesión.",
+        tipo: "peligro"
+      })
+    }
+  }
+
+  const handleImportarShowfile = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    setImportando(true)
+    try {
+      const reader = new FileReader()
+      reader.onload = async (evt) => {
+        try {
+          const fileContent = evt.target.result
+
+          // Elegir video local
+          let videoPath = ''
+          const tieneElectron = !!window?.api?.dialogo?.abrirVideo
+          if (tieneElectron) {
+            await mostrarAlerta({
+              titulo: "Vincular Video Local",
+              mensaje: "A continuación, seleccioná el archivo de video local correspondiente para vincular el análisis importado.",
+              tipo: "info"
+            })
+            videoPath = await window.api.dialogo.abrirVideo()
+          } else {
+            videoPath = prompt("Ingresá la ruta del video local para vincular con este showfile:", "C:\\videos\\combate.mp4")
+          }
+
+          if (!videoPath) {
+            setImportando(false)
+            return // Cancelado
+          }
+
+          const newId = await importarShowfileEnEquipo(fileContent, videoPath)
+          
+          await mostrarAlerta({
+            titulo: "Importación Exitosa",
+            mensaje: "¡El combate y todas sus marcas y dibujos vectoriales se han importado correctamente!",
+            tipo: "exito"
+          })
+          
+          // Redirigir al editor táctico para trabajar inmediatamente
+          navigate(`/editor/${newId}`)
+        } catch (err) {
+          console.error('[Showfile Import] Error procesando archivo:', err)
+          mostrarAlerta({
+            titulo: "Error de Importación",
+            mensaje: "No se pudo leer el archivo .daneri. Asegúrate de elegir un archivo Showfile válido.",
+            tipo: "peligro"
+          })
+        }
+      }
+      reader.readAsText(file)
+    } catch (err) {
+      console.error('[Showfile Import] Error general:', err)
+    } finally {
+      setImportando(false)
+      e.target.value = ''
+    }
+  }
   
   const [fechaCalendario, setFechaCalendario] = useState(new Date())
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0])
@@ -227,12 +307,16 @@ export default function Sesiones() {
             <h1 style={estilos.tituloPagina}>GESTIÓN DE SESIONES</h1>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--color-texto-suave)' }}>Calendario táctico e historial completo</p>
           </div>
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <div style={estilos.busqueda}>
               <Search size={18} color="var(--color-texto-suave)" />
               <input type="text" placeholder="Búsqueda profunda..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={estilos.inputBusqueda} />
             </div>
-            <button className="boton-primario" onClick={() => setModalNuevaSesionAbierto(true)} style={{ fontSize: 13, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <label className="boton-secundario" style={{ fontSize: 13, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', margin: 0, height: '38px', boxSizing: 'border-box' }}>
+              <Upload size={16} /> Importar Showfile
+              <input type="file" accept=".daneri" onChange={handleImportarShowfile} style={{ display: 'none' }} disabled={importando} />
+            </label>
+            <button className="boton-primario" onClick={() => setModalNuevaSesionAbierto(true)} style={{ fontSize: 13, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6, height: '38px', boxSizing: 'border-box' }}>
               <Plus size={16} /> Nueva Sesión
             </button>
           </div>
@@ -327,6 +411,7 @@ export default function Sesiones() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => abrirPanel(s.id)} style={{...estilos.btnMiniAccion, flex: 1}}><Eye size={14}/> Análisis</button>
                         <button onClick={() => navigate(`/editor/${s.id}`)} style={{...estilos.btnMiniAccion, flex: 1, color: 'var(--color-dorado)'}}><Play size={14}/> Táctico</button>
+                        <button onClick={() => handleExportarShowfile(s.id)} style={{...estilos.btnMiniAccion, flex: '0 0 auto', color: 'var(--color-dorado)'}} title="Exportar Showfile"><Share2 size={14}/></button>
                         <button onClick={() => eliminarSesion(s.id)} style={{...estilos.btnMiniAccion, flex: '0 0 auto', color: 'var(--color-rojo-suave)'}} title="Eliminar"><Trash2 size={14}/></button>
                       </div>
                     </div>
@@ -362,6 +447,7 @@ export default function Sesiones() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => abrirPanel(s.id)} style={estilos.btnAccionList} title="Ver Análisis"><Eye size={16} /></button>
                         <button onClick={() => navigate(`/editor/${s.id}`)} style={{...estilos.btnAccionList, color: 'var(--color-dorado)'}} title="Editor Táctico"><Play size={16} /></button>
+                        <button onClick={() => handleExportarShowfile(s.id)} style={{...estilos.btnAccionList, color: 'var(--color-dorado)'}} title="Exportar Showfile (.daneri)"><Share2 size={16} /></button>
                         <button onClick={() => eliminarSesion(s.id)} style={{...estilos.btnAccionList, color: 'var(--color-rojo-suave)'}} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </td>
