@@ -293,6 +293,13 @@ function CustomDropdown({ label, value, onChange, boxeadores, cornerColor }) {
 // Helper puro para calcular el asalto (round) de un evento en base a su timestamp y la configuración
 const obtenerRoundDeEvento = (ev, starts, total) => {
   const t = ev.tiempoVideo ?? ev.timestamp;
+  
+  // Retrocompatibilidad: Si el timestamp es un valor UNIX gigante (versiones antiguas),
+  // no podemos calcularlo dinámicamente con los marcadores de video, usamos el round original.
+  if (t > 1000000) {
+    return ev.round || 1;
+  }
+
   let activeRound = 1;
   for (let r = total; r >= 1; r--) {
     if (t >= (starts[r] ?? 999999)) {
