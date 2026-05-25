@@ -1,6 +1,6 @@
 {
   "name": "equipo-daneri-plataforma",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Plataforma de Análisis — Equipo Daneri",
   "main": "electron/main.js",
   "scripts": {
@@ -9,6 +9,7 @@
     "build": "vite build",
     "electron:dev": "electron .",
     "electron:build": "npm run build && electron-builder",
+    "release": "node scripts/release.js",
     "preview": "vite preview",
     "test": "vitest run",
     "audit": "node C:\\Users\\mauri\\.gemini\\antigravity\\brain\\fcfa68e9-6147-4461-aaeb-4b3687f5a00f\\scratch\\search_all.js"
