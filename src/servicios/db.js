@@ -60,54 +60,15 @@ db.version(4).stores({
 
 // ── Datos iniciales (seed) ─────────────────────────────────────────────────
 db.on('ready', async () => {
-  // ─── RECUPERACIÓN AUTOMÁTICA DESDE RESPALDO LOCAL ─────────────────────────
+  // Limpiar bandera de borrado manual si hay datos existentes
   try {
     const totalBoxeadores = await db.boxeadores.count()
     const totalSesiones = await db.sesiones.count()
-    const fueBorradoManualmente = localStorage.getItem('db_manually_cleared') === 'true'
-
-    if (totalBoxeadores === 0 && totalSesiones === 0 && !fueBorradoManualmente) {
-      console.log('[DB ready hook] Base de datos vacía. Intentando recuperación automática desde backup local...')
-      if (window.api?.backup?.leer) {
-        const res = await window.api.backup.leer()
-        if (res && res.ok && res.data) {
-          const data = res.data
-          console.log('[DB ready hook] Respaldo detectado. Restaurando datos automáticamente...')
-          
-          if (data.boxeadores && data.boxeadores.length > 0) {
-            await db.boxeadores.bulkAdd(data.boxeadores)
-          }
-          if (data.sesiones && data.sesiones.length > 0) {
-            await db.sesiones.bulkAdd(data.sesiones)
-          }
-          if (data.eventos && data.eventos.length > 0) {
-            await db.eventos.bulkAdd(data.eventos)
-          }
-          if (data.configuracion && data.configuracion.length > 0) {
-            await db.configuracion.clear()
-            await db.configuracion.bulkAdd(data.configuracion)
-          }
-          if (data.analistas && data.analistas.length > 0) {
-            await db.analistas.clear()
-            await db.analistas.bulkAdd(data.analistas)
-          }
-          console.log('[DB ready hook] Recuperación automática completada con éxito!')
-          
-          // Recargar la página para que la UI se entere con los datos restablecidos
-          setTimeout(() => {
-            window.location.reload()
-          }, 200)
-          return
-        }
-      }
-    }
-    
-    // Si la base de datos se restauró o tiene datos, limpiamos el flag de borrado manual
     if (totalBoxeadores > 0 || totalSesiones > 0) {
       localStorage.removeItem('db_manually_cleared')
     }
   } catch (err) {
-    console.error('[DB ready hook] Error en la recuperación automática desde backup:', err)
+    console.error('[DB ready hook] Error comprobando volumen inicial:', err)
   }
 
   const defaultHotkeys = {
@@ -220,6 +181,58 @@ export async function realizarRespaldoAutomatico() {
     }
   } catch (e) {
     console.error('[Backup] Error en realizarRespaldoAutomatico:', e)
+  }
+}
+
+// ── Función de auto-recuperación segura (ejecutada en React para evitar deadlocks) ─────────
+export async function ejecutarAutoRecuperacion() {
+  if (!window.api?.backup?.leer) {
+    console.warn('[Auto-Restore] IPC api.backup.leer no disponible en este entorno.');
+    return;
+  }
+  try {
+    const totalBoxeadores = await db.boxeadores.count()
+    const totalSesiones = await db.sesiones.count()
+    const fueBorradoManualmente = localStorage.getItem('db_manually_cleared') === 'true'
+
+    if (totalBoxeadores === 0 && totalSesiones === 0 && !fueBorradoManualmente) {
+      console.log('[Auto-Restore] Base de datos vacía. Buscando respaldo local...');
+      const res = await window.api.backup.leer()
+      if (res && res.ok && res.data) {
+        const data = res.data
+        console.log('[Auto-Restore] Respaldo detectado. Restaurando tablas automáticamente...')
+        
+        await db.transaction('rw', [db.boxeadores, db.sesiones, db.eventos, db.configuracion, db.analistas], async () => {
+          if (data.boxeadores && data.boxeadores.length > 0) {
+            await db.boxeadores.bulkAdd(data.boxeadores)
+          }
+          if (data.sesiones && data.sesiones.length > 0) {
+            await db.sesiones.bulkAdd(data.sesiones)
+          }
+          if (data.eventos && data.eventos.length > 0) {
+            await db.eventos.bulkAdd(data.eventos)
+          }
+          if (data.configuracion && data.configuracion.length > 0) {
+            await db.configuracion.clear()
+            await db.configuracion.bulkAdd(data.configuracion)
+          }
+          if (data.analistas && data.analistas.length > 0) {
+            await db.analistas.clear()
+            await db.analistas.bulkAdd(data.analistas)
+          }
+        })
+        console.log('[Auto-Restore] ¡Restauración completada con éxito!')
+        
+        // Recargar la página para aplicar los cambios en la UI
+        setTimeout(() => {
+          window.location.reload()
+        }, 150)
+      } else {
+        console.log('[Auto-Restore] No se encontró ningún respaldo local disponible.');
+      }
+    }
+  } catch (err) {
+    console.error('[Auto-Restore] Error durante la restauración automática:', err)
   }
 }
 

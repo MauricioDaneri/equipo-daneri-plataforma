@@ -32,8 +32,10 @@ export default function App() {
 
   useEffect(() => {
     if (usuario) {
-      import('./servicios/db').then(({ realizarRespaldoAutomatico }) => {
-        realizarRespaldoAutomatico()
+      import('./servicios/db').then(({ realizarRespaldoAutomatico, ejecutarAutoRecuperacion }) => {
+        ejecutarAutoRecuperacion().finally(() => {
+          realizarRespaldoAutomatico()
+        })
       })
     }
   }, [usuario])
