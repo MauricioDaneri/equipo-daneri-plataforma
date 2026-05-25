@@ -35,6 +35,8 @@ import {
   ChevronDown,
   History,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, realizarRespaldoAutomatico } from "../servicios/db";
@@ -384,8 +386,34 @@ export default function EditorTactico() {
     eventoSeleccionadoIdRef.current = eventoSeleccionadoId;
   }, [eventoSeleccionadoId]);
 
+  // Redirigir a "timeline" si se selecciona un evento que no sea golpe (no-mappable) y el panel "mapa" está activo
+  useEffect(() => {
+    if (eventoSeleccionadoId) {
+      const ev = timeline.find(e => e.id === eventoSeleccionadoId);
+      if (ev) {
+        const esGolpe = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo);
+        if (!esGolpe && panelActivo === "mapa") {
+          setPanelActivo("timeline");
+        }
+      }
+    }
+  }, [eventoSeleccionadoId, timeline, panelActivo]);
+
   useEffect(() => {
     timelineRef.current = timeline;
+  }, [timeline]);
+
+  const [tamanioLapiz, setTamanioLapiz] = useState(4);
+  const [objetosDibujo, setObjetosDibujo] = useState([]);
+
+  const eventosConNumero = useMemo(() => {
+    const ordenados = [...timeline].sort((a, b) => a.timestamp - b.timestamp);
+    const conteo = {};
+    return ordenados.map((ev) => {
+      if (!conteo[ev.tipo]) conteo[ev.tipo] = 0;
+      conteo[ev.tipo]++;
+      return { ...ev, _numero: conteo[ev.tipo] };
+    });
   }, [timeline]);
 
   // --- Clean Analysis Mode ---
@@ -622,6 +650,7 @@ export default function EditorTactico() {
         () => {
           fabricCanvasRef.current.renderAll();
           isHistoryLoadingRef.current = false;
+          actualizarObjetosDibujo();
         },
       );
     }
@@ -656,6 +685,7 @@ export default function EditorTactico() {
         () => {
           fabricCanvasRef.current.renderAll();
           isHistoryLoadingRef.current = false;
+          actualizarObjetosDibujo();
         },
       );
     }
@@ -811,6 +841,70 @@ export default function EditorTactico() {
     }, 50);
   }, []);
 
+  const actualizarObjetosDibujo = useCallback(() => {
+    if (fabricCanvasRef.current) {
+      const objs = fabricCanvasRef.current.getObjects().map((obj, i) => {
+        if (!obj.id) obj.id = `stroke_${Date.now()}_${i}_${Math.random().toString(36).substr(2, 5)}`;
+        if (!obj.label) {
+          obj.label = obj.type === 'path'
+            ? `Trazado ${i + 1}`
+            : obj.type === 'text'
+              ? `Texto: "${obj.text.substring(0, 10)}..."`
+              : `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} ${i + 1}`;
+        }
+        return {
+          id: obj.id,
+          label: obj.label,
+          type: obj.type,
+          visible: obj.visible !== false,
+          color: obj.stroke || obj.fill || '#fff'
+        };
+      });
+      setObjetosDibujo(objs);
+    } else {
+      setObjetosDibujo([]);
+    }
+  }, []);
+
+  const toggleVisibilidadObjeto = useCallback((id) => {
+    if (fabricCanvasRef.current) {
+      const obj = fabricCanvasRef.current.getObjects().find(o => o.id === id);
+      if (obj) {
+        obj.visible = !obj.visible;
+        fabricCanvasRef.current.renderAll();
+        pushStateToHistory();
+        enviarActualizacionCanvas();
+        actualizarObjetosDibujo();
+      }
+    }
+  }, [pushStateToHistory, enviarActualizacionCanvas, actualizarObjetosDibujo]);
+
+  const eliminarObjetoDibujo = useCallback((id) => {
+    if (fabricCanvasRef.current) {
+      const obj = fabricCanvasRef.current.getObjects().find(o => o.id === id);
+      if (obj) {
+        fabricCanvasRef.current.remove(obj);
+        fabricCanvasRef.current.renderAll();
+        pushStateToHistory();
+        enviarActualizacionCanvas();
+        actualizarObjetosDibujo();
+      }
+    }
+  }, [pushStateToHistory, enviarActualizacionCanvas, actualizarObjetosDibujo]);
+
+  const renombrarObjetoDibujo = useCallback((id, nuevoNombre) => {
+    if (fabricCanvasRef.current) {
+      const obj = fabricCanvasRef.current.getObjects().find(o => o.id === id);
+      if (obj) {
+        obj.label = nuevoNombre;
+        pushStateToHistory();
+        enviarActualizacionCanvas();
+        actualizarObjetosDibujo();
+      }
+    }
+  }, [pushStateToHistory, enviarActualizacionCanvas, actualizarObjetosDibujo]);
+
+
   useEffect(() => {
     if (!window.api || !window.api.video) return;
 
@@ -858,6 +952,10 @@ export default function EditorTactico() {
           console.log("[EditorTactico] SEEK_FROM_VIEWER payload:", payload);
           videoRef.current.currentTime = payload.currentTime;
           setCurrentTime(payload.currentTime);
+          const { round, estado, tiempoRestante } = calcularRoundYRestoConVideo(payload.currentTime);
+          setRoundActual(round);
+          setEstadoRound(estado);
+          setTiempoRound(tiempoRestante);
         }
       }
       if (type === 'CANVAS_UPDATE_FROM_VIEWER') {
@@ -866,6 +964,7 @@ export default function EditorTactico() {
           fabricCanvasRef.current.loadFromJSON(payload.canvasData, () => {
             fabricCanvasRef.current.renderAll();
             isSyncingFromViewerRef.current = false;
+            actualizarObjetosDibujo();
           });
         }
       }
@@ -901,16 +1000,27 @@ export default function EditorTactico() {
     }
   }, [timeline]);
 
-  // Sincronizar herramienta y color de dibujo cuando cambian
+  // Sincronizar herramienta, color y grosor de pincel local
+  useEffect(() => {
+    if (canvasInstance && canvasInstance.freeDrawingBrush) {
+      canvasInstance.freeDrawingBrush.width = tamanioLapiz;
+      canvasInstance.freeDrawingBrush.color = colorActivo;
+    }
+  }, [canvasInstance, tamanioLapiz, colorActivo]);
+
+  // Sincronizar herramienta, color, grosor de dibujo y round con el visor desacoplado cuando cambian
   useEffect(() => {
     if (window.api && window.api.video) {
       window.api.video.enviarMensajeSync({
         type: 'DRAWING_TOOL_UPDATE',
-        payload: { herramientaActiva, colorActivo }
+        payload: { herramientaActiva, colorActivo, tamanioLapiz }
+      });
+      window.api.video.enviarMensajeSync({
+        type: 'ROUND_UPDATE',
+        payload: { round: roundActual }
       });
     }
-  }, [herramientaActiva, colorActivo]);
-  // NOTA: roundActual se sincroniza dentro de handleTimeUpdate para evitar TDZ
+  }, [herramientaActiva, colorActivo, tamanioLapiz, roundActual]);
 
   // Método auxiliar para calcular round y descanso según la posición del playhead del video
   const calcularRoundYRestoConVideo = useCallback(
@@ -1329,16 +1439,19 @@ export default function EditorTactico() {
         if (!isHistoryLoadingRef.current) {
           pushStateToHistory();
         }
+        actualizarObjetosDibujo();
       });
       canvas.on("object:modified", () => {
         if (!isHistoryLoadingRef.current) {
           pushStateToHistory();
         }
+        actualizarObjetosDibujo();
       });
       canvas.on("object:removed", () => {
         if (!isHistoryLoadingRef.current) {
           pushStateToHistory();
         }
+        actualizarObjetosDibujo();
       });
       canvas.on("after:render", () => {
         enviarActualizacionCanvas();
@@ -2884,6 +2997,26 @@ export default function EditorTactico() {
               ))}
             </div>
             <div style={estilos.divisor}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
+              <span style={{ fontSize: 10, color: 'var(--color-texto-suave)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grosor</span>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={tamanioLapiz}
+                onChange={(e) => setTamanioLapiz(Number(e.target.value))}
+                style={{
+                  width: 80,
+                  accentColor: 'var(--color-dorado)',
+                  cursor: 'pointer'
+                }}
+                title={`Grosor actual: ${tamanioLapiz}px`}
+              />
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--color-dorado)', minWidth: 24, fontWeight: 700 }}>
+                {tamanioLapiz}px
+              </span>
+            </div>
+            <div style={estilos.divisor}></div>
             <button
               style={estilos.btnHerramienta}
               onClick={() => canvasInstance?.clear()}
@@ -3374,6 +3507,110 @@ export default function EditorTactico() {
             {/* Video real */}
             {videoUrl && (
               <>
+                {/* GESTOR DE CAPAS VECTORIALES FLOTANTE (STROKE LAYER MANAGER) */}
+                {videoUrl && !analisisLimpio && objetosDibujo.length > 0 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 20,
+                      top: 20,
+                      bottom: 70, // deja espacio para barra de controles inferior
+                      width: 220,
+                      background: "rgba(20, 20, 20, 0.8)",
+                      backdropFilter: "blur(12px)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: 12,
+                      padding: 16,
+                      zIndex: 20,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-dorado)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Anotaciones</span>
+                      <span style={{ fontSize: 9, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 10, color: 'var(--color-texto-suave)', fontWeight: 700 }}>
+                        {objetosDibujo.length}
+                      </span>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}>
+                      {objetosDibujo.map((obj) => (
+                        <div
+                          key={obj.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            transition: 'background 0.2s',
+                          }}
+                        >
+                          {/* Indicador de Color */}
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: obj.color, flexShrink: 0 }} />
+                          
+                          {/* Input de Nombre editable */}
+                          <input
+                            type="text"
+                            value={obj.label}
+                            onChange={(e) => renombrarObjetoDibujo(obj.id, e.target.value)}
+                            style={{
+                              flex: 1,
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#fff',
+                              fontSize: 11,
+                              outline: 'none',
+                              padding: '2px 4px',
+                              fontFamily: 'inherit',
+                              minWidth: 0,
+                            }}
+                          />
+                          
+                          {/* Conmutador de Visibilidad */}
+                          <button
+                            onClick={() => toggleVisibilidadObjeto(obj.id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: obj.visible ? 'var(--color-dorado)' : 'var(--color-texto-muted)',
+                              cursor: 'pointer',
+                              padding: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                            }}
+                            title={obj.visible ? "Ocultar trazo" : "Mostrar trazo"}
+                          >
+                            {obj.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                          </button>
+                          
+                          {/* Eliminar quirúrgico */}
+                          <button
+                            onClick={() => eliminarObjetoDibujo(obj.id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--color-texto-muted)',
+                              cursor: 'pointer',
+                              padding: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              transition: 'color 0.2s',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-rojo-suave)'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-texto-muted)'}
+                            title="Eliminar trazo"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <video
                   ref={videoRef}
                   src={videoUrl}
@@ -3556,7 +3793,8 @@ export default function EditorTactico() {
           {/* VIDEO TIMELINE OVERLAY — se muestra si hay video */}
           {videoUrl && (
             <VideoTimelineOverlay
-              eventos={timeline}
+              eventos={eventosConNumero}
+              eventoSeleccionadoId={eventoSeleccionadoId}
               duracion={videoDuration || (videoRef.current && !isNaN(videoRef.current.duration) ? videoRef.current.duration : 0)}
               tiempoActual={currentTime}
               expanded={visorDetachadoAbierto}
@@ -3592,12 +3830,12 @@ export default function EditorTactico() {
                 setPanelActivo("mapa");
                 setEventoSeleccionadoId(ev.id);
               }}
-              onMoveEvento={(id, nuevoTimestamp) => {
-                setTimeline(prev => prev.map(ev => ev.id === id ? { ...ev, timestamp: nuevoTimestamp, tiempoVideo: nuevoTimestamp } : ev));
-                // Si el evento movido es el del bucle actual, redefinimos el bucle en tiempo real!
-                if (bucleEventoId === id) {
-                  const start = Math.max(0, nuevoTimestamp - 2);
-                  const end = nuevoTimestamp + 2;
+              onUpdateEvento={(id, campos) => {
+                setTimeline(prev => prev.map(ev => ev.id === id ? { ...ev, ...campos } : ev));
+                if (bucleEventoId === id && campos.timestamp !== undefined) {
+                  const t = campos.timestamp;
+                  const start = Math.max(0, t - 2);
+                  const end = t + 2;
                   setBucleRango({ start, end });
                 }
               }}
@@ -3885,155 +4123,172 @@ export default function EditorTactico() {
                   WebkitOverflowScrolling: "touch",
                 }}
               >
-                {[
-                  {
-                    id: "timeline",
-                    icon: Video,
-                    label: sidebarExpandido ? "Línea Tiempo" : "Línea",
-                    badge: timeline.length > 0 ? timeline.length : null,
-                    color: "var(--color-texto)",
-                    activeColor: "var(--color-dorado)",
-                  },
-                  {
-                    id: "mapa",
-                    icon: Target,
-                    label: sidebarExpandido ? "Mapa Calor" : "Mapa",
-                    badge: eventoSeleccionadoId ? "📍" : null,
-                    color: "var(--color-texto)",
-                    activeColor: "var(--color-rojo-suave)",
-                  },
-                  {
-                    id: "stats",
-                    icon: BarChart3,
-                    label: "Estadísticas",
-                    color: "var(--color-texto)",
-                    activeColor: "var(--color-dorado-suave)",
-                  },
-                  {
-                    id: "ollama",
-                    icon: Cpu,
-                    label: sidebarExpandido ? "Asistente IA" : "IA",
-                    color: "var(--color-texto)",
-                    activeColor: "var(--color-exito)",
-                  },
-                  {
-                    id: "voz",
-                    icon: Mic,
-                    label: "Voz",
-                    color: "var(--color-texto)",
-                    activeColor: "var(--color-azul-suave)",
-                  },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setPanelActivo(tab.id)}
-                    style={{
-                      position: "relative",
-                      flex: sidebarExpandido ? "0 0 auto" : 1,
-                      display: "flex",
-                      flexDirection: sidebarExpandido ? "row" : "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      padding: sidebarExpandido ? "10px 16px" : "10px 6px",
-                      borderRadius: 8,
-                      background: panelActivo === tab.id ? "var(--color-superficie)" : "transparent",
-                      color: panelActivo === tab.id ? tab.activeColor : "var(--color-texto-suave)",
-                      boxShadow: panelActivo === tab.id ? "0 2px 8px rgba(0,0,0,0.4)" : "none",
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      outline: "none",
-                    }}
-                  >
-                    {panelActivo === tab.id && (
-                      <motion.div
-                        layoutId="activeTabPill"
-                        initial={false}
-                        transition={{
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 30,
+                {(() => {
+                  const evSel = timeline.find(e => e.id === eventoSeleccionadoId);
+                  const esGolpeSeleccionado = evSel && ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(evSel.tipo);
+                  
+                  return [
+                    {
+                      id: "timeline",
+                      icon: Video,
+                      label: sidebarExpandido ? "Línea Tiempo" : "Línea",
+                      badge: timeline.length > 0 ? timeline.length : null,
+                      color: "var(--color-texto)",
+                      activeColor: "var(--color-dorado)",
+                    },
+                    {
+                      id: "mapa",
+                      icon: Target,
+                      label: sidebarExpandido ? "Mapa Calor" : "Mapa",
+                      badge: eventoSeleccionadoId ? "📍" : null,
+                      color: "var(--color-texto)",
+                      activeColor: "var(--color-rojo-suave)",
+                    },
+                    {
+                      id: "stats",
+                      icon: BarChart3,
+                      label: "Estadísticas",
+                      color: "var(--color-texto)",
+                      activeColor: "var(--color-dorado-suave)",
+                    },
+                    {
+                      id: "ollama",
+                      icon: Cpu,
+                      label: sidebarExpandido ? "Asistente IA" : "IA",
+                      color: "var(--color-texto)",
+                      activeColor: "var(--color-exito)",
+                    },
+                    {
+                      id: "voz",
+                      icon: Mic,
+                      label: "Voz",
+                      color: "var(--color-texto)",
+                      activeColor: "var(--color-azul-suave)",
+                    },
+                  ].map((tab) => {
+                    const isDisabled = tab.id === "mapa" && !esGolpeSeleccionado;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          if (isDisabled) return;
+                          setPanelActivo(tab.id);
                         }}
+                        disabled={isDisabled}
                         style={{
-                          position: "absolute",
-                          inset: 0,
-                          borderRadius: 6,
-                          border: `1px solid ${tab.activeColor}40`,
-                          zIndex: 0,
+                          position: "relative",
+                          flex: sidebarExpandido ? "0 0 auto" : 1,
+                          display: "flex",
+                          flexDirection: sidebarExpandido ? "row" : "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          padding: sidebarExpandido ? "10px 16px" : "10px 6px",
+                          borderRadius: 8,
+                          background: panelActivo === tab.id ? "var(--color-superficie)" : "transparent",
+                          color: isDisabled
+                            ? "rgba(255, 255, 255, 0.15)"
+                            : panelActivo === tab.id
+                              ? tab.activeColor
+                              : "var(--color-texto-suave)",
+                          boxShadow: panelActivo === tab.id ? "0 2px 8px rgba(0,0,0,0.4)" : "none",
+                          border: "none",
+                          cursor: isDisabled ? "not-allowed" : "pointer",
+                          transition: "all 0.2s ease",
+                          outline: "none",
+                          opacity: isDisabled ? 0.3 : 1,
                         }}
-                      />
-                    )}
-                    <div
-                      style={{
-                        position: "relative",
-                        zIndex: 1,
-                        display: "flex",
-                        flexDirection: sidebarExpandido ? "row" : "column",
-                        alignItems: "center",
-                        gap: sidebarExpandido ? 6 : 4,
-                      }}
-                    >
-                      <div style={{ position: "relative" }}>
-                        <tab.icon size={sidebarExpandido ? 16 : 18} strokeWidth={panelActivo === tab.id ? 2.5 : 2} />
-                        {!sidebarExpandido && tab.badge && (
-                          <div style={{
-                            position: "absolute", top: -6, right: -10,
-                            background: "var(--color-dorado)", color: "#000",
-                            fontSize: 10, fontWeight: 800, padding: "2px 5px",
-                            borderRadius: 12, lineHeight: 1
-                          }}>
-                            {tab.badge}
-                          </div>
+                      >
+                        {panelActivo === tab.id && (
+                          <motion.div
+                            layoutId="activeTabPill"
+                            initial={false}
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 30,
+                            }}
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              borderRadius: 6,
+                              border: `1px solid ${tab.activeColor}40`,
+                              zIndex: 0,
+                            }}
+                          />
                         )}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ 
-                          fontSize: sidebarExpandido ? 13 : 11, 
-                          fontWeight: panelActivo === tab.id ? 600 : 500,
-                          letterSpacing: sidebarExpandido ? "normal" : "0.02em",
-                          whiteSpace: "nowrap"
-                        }}>
-                          {tab.label}
-                        </span>
-                        {sidebarExpandido && tab.badge && (
-                          <span style={{ 
-                            background: panelActivo === tab.id ? `${tab.activeColor}20` : "rgba(255,255,255,0.1)", 
-                            color: panelActivo === tab.id ? tab.activeColor : "var(--color-texto-suave)",
-                            fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12 
-                          }}>
-                            {tab.badge}
-                          </span>
-                        )}
-                      </div>
-                      {sidebarExpandido && (
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMostrarManual(true);
-                            setManualTab(tab.id);
-                          }}
+                        <div
                           style={{
-                            marginLeft: 4,
+                            position: "relative",
+                            zIndex: 1,
                             display: "flex",
+                            flexDirection: sidebarExpandido ? "row" : "column",
                             alignItems: "center",
-                            justifyContent: "center",
-                            width: 14,
-                            height: 14,
-                            borderRadius: "50%",
-                            background: "rgba(255,255,255,0.1)",
-                            fontSize: 8,
-                            color: "var(--color-texto)",
-                            transition: "background 0.2s",
+                            gap: sidebarExpandido ? 6 : 4,
                           }}
-                          title="Ayuda"
                         >
-                          ?
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                          <div style={{ position: "relative" }}>
+                            <tab.icon size={sidebarExpandido ? 16 : 18} strokeWidth={panelActivo === tab.id ? 2.5 : 2} />
+                            {!sidebarExpandido && tab.badge && (
+                              <div style={{
+                                position: "absolute", top: -6, right: -10,
+                                background: "var(--color-dorado)", color: "#000",
+                                fontSize: 10, fontWeight: 800, padding: "2px 5px",
+                                borderRadius: 12, lineHeight: 1
+                              }}>
+                                {tab.badge}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ 
+                              fontSize: sidebarExpandido ? 13 : 11, 
+                              fontWeight: panelActivo === tab.id ? 600 : 500,
+                              letterSpacing: sidebarExpandido ? "normal" : "0.02em",
+                              whiteSpace: "nowrap"
+                            }}>
+                              {tab.label}
+                            </span>
+                            {sidebarExpandido && tab.badge && (
+                              <span style={{ 
+                                background: panelActivo === tab.id ? `${tab.activeColor}20` : "rgba(255,255,255,0.1)", 
+                                color: panelActivo === tab.id ? tab.activeColor : "var(--color-texto-suave)",
+                                fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12 
+                              }}>
+                                {tab.badge}
+                              </span>
+                            )}
+                          </div>
+                          {sidebarExpandido && (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMostrarManual(true);
+                                setManualTab(tab.id);
+                              }}
+                              style={{
+                                marginLeft: 4,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                background: "rgba(255,255,255,0.1)",
+                                fontSize: 8,
+                                color: "var(--color-texto)",
+                                transition: "background 0.2s",
+                              }}
+                              title="Ayuda"
+                            >
+                              ?
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -4174,7 +4429,7 @@ export default function EditorTactico() {
                             </div>
                           </div>
                         ) : (
-                          timeline.map((ev) => (
+                          eventosConNumero.map((ev) => (
                             <motion.div
                               key={ev.id}
                               onClick={() => {
@@ -4182,6 +4437,13 @@ export default function EditorTactico() {
                                 if (videoRef.current) {
                                   videoRef.current.currentTime = ev.timestamp;
                                   setCurrentTime(ev.timestamp);
+                                }
+                                // Focus corresponding panel tab (exclusivity for punches)
+                                const esMappable = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo);
+                                if (esMappable) {
+                                  setPanelActivo("mapa");
+                                } else if (panelActivo === "mapa") {
+                                  setPanelActivo("timeline");
                                 }
                                 // Restore drawing if available
                                 if (fabricCanvasRef.current) {
@@ -4193,6 +4455,7 @@ export default function EditorTactico() {
                                         () => {
                                           fabricCanvasRef.current.renderAll();
                                           isHistoryLoadingRef.current = false;
+                                          actualizarObjetosDibujo();
                                         },
                                       );
                                     } catch (e) {
@@ -4200,6 +4463,7 @@ export default function EditorTactico() {
                                     }
                                   } else {
                                     fabricCanvasRef.current.clear();
+                                    actualizarObjetosDibujo();
                                   }
                                 }
                               }}
@@ -4276,6 +4540,18 @@ export default function EditorTactico() {
                                     gap: 6,
                                   }}
                                 >
+                                  <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: "var(--color-dorado)",
+                                    background: "rgba(212, 175, 55, 0.15)",
+                                    padding: "2px 6px",
+                                    borderRadius: 4,
+                                    marginRight: 4,
+                                    whiteSpace: "nowrap"
+                                  }}>
+                                    #{ev._numero}
+                                  </span>
                                   <select
                                     value={ev.tipo}
                                     onClick={(e) => e.stopPropagation()}

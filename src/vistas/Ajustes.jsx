@@ -65,6 +65,14 @@ export default function Ajustes() {
   const [ultimoSync, setUltimoSync] = useState(localStorage.getItem('ultimo_sync') || 'Nunca')
   const [usuarioEmail, setUsuarioEmail] = useState(auth.currentUser?.email || '')
   const [buscandoActualizacion, setBuscandoActualizacion] = useState(false)
+  const [autoSync, setAutoSync] = useState(localStorage.getItem('auto_sync_enabled') === 'true')
+
+  const handleToggleAutoSync = (e) => {
+    const newVal = e.target.checked
+    setAutoSync(newVal)
+    localStorage.setItem('auto_sync_enabled', newVal ? 'true' : 'false')
+    window.dispatchEvent(new Event('autosync:toggle'))
+  }
 
   const handleBuscarActualizacion = async () => {
     if (!window.api?.actualizacion?.buscar) {
@@ -415,6 +423,32 @@ export default function Ajustes() {
               </div>
             </div>
 
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-texto)' }}>Sincronización Automática</span>
+                <span style={{ fontSize: 11, color: 'var(--color-texto-suave)' }}>Respalda automáticamente cada 5 minutos de fondo</span>
+              </div>
+              <label className="switch-premium" style={estilos.switchLabel}>
+                <input
+                  type="checkbox"
+                  checked={autoSync}
+                  onChange={handleToggleAutoSync}
+                  style={estilos.switchInput}
+                />
+                <span style={{
+                  ...estilos.switchSlider,
+                  backgroundColor: autoSync ? 'var(--color-dorado)' : 'rgba(255,255,255,0.08)',
+                  boxShadow: autoSync ? '0 0 10px rgba(212,175,55,0.4)' : 'none'
+                }}>
+                  <span style={{
+                    ...estilos.switchKnob,
+                    transform: autoSync ? 'translateX(20px)' : 'translateX(0px)',
+                    backgroundColor: autoSync ? '#000000' : 'var(--color-texto-suave)'
+                  }} />
+                </span>
+              </label>
+            </div>
+
             <button 
               className="boton-primario" 
               onClick={handleSincronizarNube} 
@@ -624,4 +658,34 @@ const estilos = {
     boxShadow: '0 0 12px rgba(212,175,55,0.4), 0 2px 4px rgba(0,0,0,0.4)',
     transition: 'all 0.1s ease',
   },
+  switchLabel: {
+    position: 'relative',
+    display: 'inline-block',
+    width: 44,
+    height: 24,
+    cursor: 'pointer'
+  },
+  switchInput: {
+    opacity: 0,
+    width: 0,
+    height: 0
+  },
+  switchSlider: {
+    position: 'absolute',
+    cursor: 'pointer',
+    top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 24,
+    border: '1px solid rgba(255,255,255,0.1)',
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 2px'
+  },
+  switchKnob: {
+    height: 18,
+    width: 18,
+    borderRadius: '50%',
+    transition: 'all 0.3s ease',
+    display: 'block'
+  }
 }

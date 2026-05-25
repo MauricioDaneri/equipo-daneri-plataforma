@@ -5,6 +5,8 @@ import BarraLateral from './BarraLateral'
 import BarraTitulo from './BarraTitulo'
 import ErrorBoundary from '../ui/ErrorBoundary'
 import { RefreshCw, X, Sparkles } from 'lucide-react'
+import { auth } from '../../servicios/firebase'
+import { sincronizarLocalHaciaNube, sincronizarNubeHaciaLocal } from '../../servicios/sync'
 
 /**
  * LayoutMaestro — Estructura principal 100vh de la Plataforma de Análisis.
@@ -51,6 +53,59 @@ export default function LayoutMaestro() {
         if (typeof limpiarError === 'function') limpiarError();
       };
     }
+  }, []);
+
+  // Módulo de Auto-Sincronización Inteligente de Fondo (Cada 5 Minutos)
+  useEffect(() => {
+    const INTERVAL_TIME = 300000; // 5 minutos (300000ms)
+    
+    const ejecutarSincronizacionSilenciosa = async () => {
+      const isAutoSync = localStorage.getItem('auto_sync_enabled') === 'true';
+      if (!isAutoSync) return;
+      
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      console.log('[AutoSync] Iniciando respaldo automático de fondo...');
+      
+      // Emitir evento para iniciar la animación giratoria dorada de CLOUD SYNC en BarraTitulo
+      window.dispatchEvent(new CustomEvent('sync:status', { detail: { status: 'syncing' } }));
+      
+      try {
+        // 1. Descargar cambios de la nube a local
+        await sincronizarNubeHaciaLocal(user.uid);
+        // 2. Subir cambios locales a la nube
+        await sincronizarLocalHaciaNube(user.uid);
+        
+        const timestamp = new Date().toLocaleString();
+        localStorage.setItem('ultimo_sync', timestamp);
+        
+        console.log('[AutoSync] Respaldo automático completado con éxito a las', timestamp);
+        window.dispatchEvent(new CustomEvent('sync:status', { detail: { status: 'idle', success: true } }));
+      } catch (err) {
+        console.error('[AutoSync] Error durante auto-sincronización de fondo:', err);
+        window.dispatchEvent(new CustomEvent('sync:status', { detail: { status: 'idle', success: false } }));
+      }
+    };
+    
+    const timerId = setInterval(ejecutarSincronizacionSilenciosa, INTERVAL_TIME);
+    
+    // Escuchar toggle inmediato de Ajustes.jsx
+    const handleToggleEvent = () => {
+      ejecutarSincronizacionSilenciosa();
+    };
+    window.addEventListener('autosync:toggle', handleToggleEvent);
+    
+    // Ejecutar una vez pasados 3 segundos del arranque si está activado
+    const initialDelay = setTimeout(() => {
+      ejecutarSincronizacionSilenciosa();
+    }, 3000);
+    
+    return () => {
+      clearInterval(timerId);
+      clearTimeout(initialDelay);
+      window.removeEventListener('autosync:toggle', handleToggleEvent);
+    };
   }, []);
 
   const handleReiniciarYActualizar = () => {

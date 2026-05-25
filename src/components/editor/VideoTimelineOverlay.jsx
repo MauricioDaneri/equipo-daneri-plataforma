@@ -73,6 +73,12 @@ function EventTooltip({ evento, x, y, visible }) {
         <div style={{ color: 'var(--color-texto)' }}>{evento.round ?? '—'}</div>
         <div style={{ color: 'var(--color-texto-muted)' }}>Rincón</div>
         <div style={{ color: evento.esquina === 'roja' ? 'var(--color-rojo-suave)' : evento.esquina === 'azul' ? 'var(--color-azul-suave)' : 'var(--color-texto-suave)' }}>{rincon}</div>
+        {evento.duracion > 0 && (
+          <>
+            <div style={{ color: 'var(--color-texto-muted)' }}>Duración</div>
+            <div style={{ color: 'var(--color-texto)', fontFamily: 'monospace' }}>{evento.duracion.toFixed(2)}s</div>
+          </>
+        )}
       </div>
       {evento.notaVoz && (
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--color-borde)', fontSize: 11, color: 'var(--color-texto-suave)', fontStyle: 'italic' }}>
@@ -94,7 +100,9 @@ export default function VideoTimelineOverlay({
   onCompare, 
   onEditEvento, 
   onMoveEvento, 
+  onUpdateEvento,
   expanded = false, 
+  eventoSeleccionadoId,
   style = {} 
 }) {
   const barraRef       = useRef(null)
@@ -114,11 +122,27 @@ export default function VideoTimelineOverlay({
   }, [])
   const dragStartX     = useRef(0)
 
+  // Centrar y zoom a 8x al seleccionar un evento
+  useEffect(() => {
+    if (eventoSeleccionadoId && duracion > 0) {
+      const selected = eventos.find(e => e.id === eventoSeleccionadoId)
+      if (selected) {
+        const t = selected.tiempoVideo ?? selected.timestamp
+        const pos = t / duracion
+        const targetZoom = 8
+        setZoom(targetZoom)
+        setScrollOffset(Math.max(0, Math.min(1 - 1/targetZoom, pos - 0.5/targetZoom)))
+      }
+    }
+  }, [eventoSeleccionadoId, eventos, duracion])
+
   // ─── Auto-zoom inteligente ──────────────────────────────────────────────────
   useEffect(() => {
     if (duracion === 0 || eventos.length === 0) return
 
-    // Detectar densidad de eventos alrededor del tiempo actual
+    // Si hay un evento seleccionado, no anular el zoom manual/selection
+    if (eventoSeleccionadoId) return
+
     const ventana = 2 // segundos
     const cercanos = eventos.filter(e => {
       const t = e.tiempoVideo ?? e.timestamp
@@ -126,17 +150,15 @@ export default function VideoTimelineOverlay({
     })
 
     if (cercanos.length >= AUTO_ZOOM_UMBRAL && !autoZoomed) {
-      // Auto-zoom a esa sección
       const targetZoom = Math.min(MAX_ZOOM, Math.max(4, cercanos.length * 1.5))
       setZoom(targetZoom)
-      // Centrar el viewport en el tiempo actual
       const pos = tiempoActual / duracion
       setScrollOffset(Math.max(0, Math.min(1 - 1/targetZoom, pos - 0.5/targetZoom)))
       setAutoZoomed(true)
     } else if (cercanos.length < 2 && autoZoomed) {
       setAutoZoomed(false)
     }
-  }, [tiempoActual, eventos, duracion, autoZoomed])
+  }, [tiempoActual, eventos, duracion, autoZoomed, eventoSeleccionadoId])
 
   // ─── Rueda del ratón → zoom ─────────────────────────────────────────────────
   const handleWheel = useCallback((e) => {
@@ -180,20 +202,20 @@ export default function VideoTimelineOverlay({
   const eventosVisibles = useMemo(() => {
     return eventos.filter(e => {
       const pos = posicionEvento(e)
-      return pos >= -2 && pos <= 102
+      // Permitir un rango más amplio para barras de duración
+      const len = e.duracion ? ((e.duracion / duracion) * zoom * 100) : 0
+      return pos >= -2 - len && pos <= 102
     })
-  }, [eventos, posicionEvento])
+  }, [eventos, posicionEvento, duracion, zoom])
 
   // ─── Detectar clusters (eventos muy cercanos) ────────────────────────────────
   const eventosConNivel = useMemo(() => {
-    // Asignar nivel vertical (0, 1, 2...) para evitar superposición
     const sorted = [...eventosVisibles].sort((a, b) => (a.tiempoVideo ?? a.timestamp) - (b.tiempoVideo ?? b.timestamp))
     const resultado = []
     const ocupado   = [] // [{ pos, nivel }]
     
     sorted.forEach(ev => {
       const pos = posicionEvento(ev)
-      // Buscar nivel libre (no hay otro evento a menos de 2% de ancho)
       let nivel = 0
       while (ocupado.some(o => o.nivel === nivel && Math.abs(o.pos - pos) < 2.5)) {
         nivel++
@@ -204,15 +226,46 @@ export default function VideoTimelineOverlay({
     return resultado
   }, [eventosVisibles, posicionEvento])
 
-  // Parámetros de dimensionamiento dinámicos basados en la prop 'expanded'
-  const currentAlturaMarca = expanded ? 32 : ALTURA_MARCA
-  const currentAlturaBarra = expanded ? 220 : ALTURA_BARRA
-  const gapVertical = expanded ? 12 : 4
-  const paddingVertical = expanded ? 24 : 18
+  // Mapeos de tracks multilinea para el modo expandido
+  const LANES_INFO = [
+    { index: 0, label: "JAB" },
+    { index: 1, label: "RECTO / CROSS" },
+    { index: 2, label: "GANCHO / UPPER / SWING" },
+    { index: 3, label: "ESQUIVA / BLOQUEO / PIVOTEO" },
+    { index: 4, label: "CLINCH / FINTA" },
+    { index: 5, label: "GENERAL" },
+  ];
 
-  // ─── Altura dinámica basada en niveles ──────────────────────────────────────
+  const MAPEO_TRACKS = {
+    'Jab': 0,
+    'Recto': 1,
+    'Cross': 1,
+    'Gancho': 2,
+    'Uppercut': 2,
+    'Swing': 2,
+    'Esquiva': 3,
+    'Bloqueo': 3,
+    'Pivoteo': 3,
+    'Clinch': 4,
+    'Finta': 4,
+    'Marca General': 5,
+  };
+
+  const getTrackIndex = (tipo) => {
+    return MAPEO_TRACKS[tipo] ?? 5;
+  };
+
+  const currentAlturaMarca = expanded ? 24 : ALTURA_MARCA
+  const ALTURA_LANE = 38
+  const currentAlturaBarra = expanded ? 240 : ALTURA_BARRA
+  const gapVertical = expanded ? 6 : 4
+  const paddingVertical = expanded ? 28 : 18
+
+  // ─── Altura dinámica basada en niveles / lanes ──────────────────────────────────────
   const maxNivel = useMemo(() => Math.max(0, ...eventosConNivel.map(e => e._nivel)), [eventosConNivel])
-  const alturaTotal = Math.max(currentAlturaBarra, (maxNivel + 1) * (currentAlturaMarca + gapVertical) + paddingVertical)
+  const alturaTotal = expanded 
+    ? (6 * ALTURA_LANE + paddingVertical + 10) 
+    : Math.max(currentAlturaBarra, (maxNivel + 1) * (currentAlturaMarca + gapVertical) + paddingVertical)
 
   // ─── Arrastre y edición de marcas (Draggable Timeline Markers) ────────────────
   const handleDragStartMarca = (e, ev) => {
@@ -229,7 +282,6 @@ export default function VideoTimelineOverlay({
     const handleMouseMoveDrag = (moveEvent) => {
       xActual = moveEvent.clientX
       const deltaX = moveEvent.clientX - xInicial
-      // deltaX en pixeles -> fraccion del ancho -> fraccion del zoom -> segundos
       const deltaFraccion = deltaX / anchoBarra
       const deltaSegundos = (deltaFraccion / zoom) * duracion
       const nuevoTiempo = Math.max(0, Math.min(duracion, tInicial + deltaSegundos))
@@ -244,14 +296,11 @@ export default function VideoTimelineOverlay({
       
       const deltaTotal = Math.abs(xActual - xInicial)
       if (deltaTotal < 4) {
-        // Es un clic
         if (clickTimeoutRef.current) {
-          // Doble clic: abre/edita etiqueta
           clearTimeout(clickTimeoutRef.current)
           clickTimeoutRef.current = null
           onEditEvento?.(ev)
         } else {
-          // Clic simple: inicia bucle de 10s (5s antes, 5s después del marcador)
           clickTimeoutRef.current = setTimeout(() => {
             clickTimeoutRef.current = null
             onSeekLoop?.(tInicial, ev.id)
@@ -266,7 +315,34 @@ export default function VideoTimelineOverlay({
 
   const handleDblClickMarca = (e, evento) => {
     e.stopPropagation()
-    // No sobreescribir ya que el doble clic se resuelve de forma nativa en handleMouseUpDrag
+  }
+
+  // ─── Redimensionamiento de Duración (Resize Event Duration) ───────────────────
+  const handleMouseDownResize = (e, ev) => {
+    e.stopPropagation()
+    e.preventDefault()
+    
+    const id = ev.id
+    const duracionInicial = ev.duracion ?? 0
+    const xInicial = e.clientX
+    const anchoBarra = barraRef.current ? barraRef.current.getBoundingClientRect().width : 800
+    
+    const handleMouseMoveResize = (moveEvent) => {
+      const deltaX = moveEvent.clientX - xInicial
+      const deltaFraccion = deltaX / anchoBarra
+      const deltaSegundos = (deltaFraccion / zoom) * duracion
+      const nuevaDuracion = Math.max(0, duracionInicial + deltaSegundos)
+      
+      onUpdateEvento?.(id, { duracion: nuevaDuracion })
+    }
+    
+    const handleMouseUpResize = () => {
+      document.removeEventListener('mousemove', handleMouseMoveResize)
+      document.removeEventListener('mouseup', handleMouseUpResize)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMoveResize)
+    document.addEventListener('mouseup', handleMouseUpResize)
   }
 
   // ─── Click en la barra (seek) ────────────────────────────────────────────────
@@ -278,7 +354,6 @@ export default function VideoTimelineOverlay({
     }
     const rect    = barraRef.current.getBoundingClientRect()
     const fraccion = (e.clientX - rect.left) / rect.width
-    // Convertir posición de pantalla a tiempo real
     const tiempoReal = (fraccion / zoom + scrollOffset) * duracion
     if (isNaN(tiempoReal) || !isFinite(tiempoReal)) {
       console.warn("[VideoTimelineOverlay] Calculated tiempoReal is invalid:", tiempoReal)
@@ -341,7 +416,7 @@ export default function VideoTimelineOverlay({
           position: 'relative',
           height: expanded ? 'auto' : alturaTotal,
           flex: expanded ? 1 : 'none',
-          minHeight: expanded ? currentAlturaBarra : 'auto',
+          minHeight: expanded ? alturaTotal : 'auto',
           background: 'var(--color-fondo)',
           overflow: 'hidden',
           cursor: zoom > 1 ? 'grab' : 'pointer',
@@ -351,11 +426,91 @@ export default function VideoTimelineOverlay({
         {/* Fondo de tiempo con marcas de segundos */}
         <TimeRuler duracion={duracion} zoom={zoom} scrollOffset={scrollOffset} />
 
+        {/* Canales verticales en el fondo si está expandido */}
+        {expanded && (
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, display: 'flex', flexDirection: 'column', paddingTop: paddingVertical }}>
+            {LANES_INFO.map((lane) => (
+              <div
+                key={lane.index}
+                style={{
+                  height: ALTURA_LANE,
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 8,
+                }}
+              >
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  color: 'rgba(255, 255, 255, 0.08)',
+                  pointerEvents: 'none',
+                }}>
+                  {lane.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* MARCADORES DE EVENTOS */}
         {eventosConNivel.map((ev, i) => {
           const cfg = getTipoEvento(ev.tipo)
           const estaEnComparacion = comparando.includes(ev)
-          const top = paddingVertical + ev._nivel * (currentAlturaMarca + gapVertical)
+          const esSeleccionado = ev.id === eventoSeleccionadoId
+
+          // Calcular posicion vertical segun el modo expandido (lanes fijas) o compact
+          const top = expanded
+            ? paddingVertical + getTrackIndex(ev.tipo) * ALTURA_LANE + (ALTURA_LANE - currentAlturaMarca) / 2
+            : paddingVertical + ev._nivel * (currentAlturaMarca + gapVertical)
+
+          const hasDur = ev.duracion > 0
+          const posStart = posicionEvento(ev)
+
+          let markerStyle = {
+            position: 'absolute',
+            top,
+            height: currentAlturaMarca,
+            borderRadius: 6,
+            background: cfg.color + (esSeleccionado ? '77' : estaEnComparacion ? '66' : '22'),
+            border: esSeleccionado
+              ? `2px solid var(--color-dorado)`
+              : `1px solid ${cfg.color}${estaEnComparacion ? 'ff' : '77'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            padding: '0 6px',
+            cursor: 'pointer',
+            transition: 'background 0.15s, border-color 0.15s, box-shadow 0.15s',
+            boxShadow: esSeleccionado 
+              ? `0 0 12px var(--color-dorado)` 
+              : estaEnComparacion 
+                ? `0 0 8px ${cfg.color}` 
+                : 'none',
+            zIndex: esSeleccionado ? 15 : estaEnComparacion ? 10 : 1,
+            overflow: 'hidden',
+          }
+
+          if (hasDur) {
+            const widthPercent = ((ev.duracion) / duracion * zoom) * 100
+            markerStyle = {
+              ...markerStyle,
+              left: `${posStart}%`,
+              width: `${widthPercent}%`,
+              minWidth: 32,
+              transform: 'none',
+              justifyContent: 'flex-start',
+            }
+          } else {
+            markerStyle = {
+              ...markerStyle,
+              left: `${posStart}%`,
+              transform: 'translateX(-50%)',
+            }
+          }
 
           return (
             <div
@@ -365,27 +520,7 @@ export default function VideoTimelineOverlay({
               onMouseEnter={e => setTooltip({ visible: true, evento: ev, x: e.clientX, y: e.clientY })}
               onMouseMove={e => setTooltip(t => ({ ...t, x: e.clientX, y: e.clientY }))}
               onMouseLeave={() => setTooltip(t => ({...t, visible: false}))}
-              style={{
-                position: 'absolute',
-                left: `${Math.max(0, ev._pos)}%`,
-                top,
-                transform: 'translateX(-50%)',
-                width: 'auto',
-                minWidth: 28,
-                height: currentAlturaMarca,
-                borderRadius: 4,
-                background: cfg.color + (estaEnComparacion ? 'ff' : '33'),
-                border: `1px solid ${cfg.color}${estaEnComparacion ? 'ff' : '88'}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 3,
-                padding: '0 5px',
-                cursor: 'pointer',
-                transition: 'background 0.15s, transform 0.1s',
-                boxShadow: estaEnComparacion ? `0 0 8px ${cfg.color}` : 'none',
-                zIndex: estaEnComparacion ? 10 : 1,
-              }}
+              style={markerStyle}
             >
               {/* Indicador de esquina */}
               {ev.esquina && ev.esquina !== 'general' && (
@@ -395,14 +530,58 @@ export default function VideoTimelineOverlay({
                   flexShrink: 0
                 }} />
               )}
-              {/* ID del tipo */}
-              <span style={{ fontSize: 9, fontWeight: 700, color: estaEnComparacion ? 'var(--color-texto)' : cfg.color, fontFamily: 'monospace' }}>
-                {cfg.id}
+              {/* Correlativo number / ID */}
+              <span style={{ 
+                fontSize: expanded ? 10 : 9, 
+                fontWeight: 750, 
+                color: esSeleccionado || estaEnComparacion ? 'var(--color-texto)' : cfg.color, 
+                fontFamily: 'monospace',
+                whiteSpace: 'nowrap'
+              }}>
+                {cfg.shortName} {ev._numero ?? ''}
               </span>
               {/* Ícono del evento */}
-              <span style={{ fontSize: 10, color: estaEnComparacion ? 'var(--color-texto)' : cfg.color }}>
+              <span style={{ fontSize: 10, color: esSeleccionado || estaEnComparacion ? 'var(--color-texto)' : cfg.color }}>
                 {cfg.icon}
               </span>
+
+              {/* Muestra la duración si cabe */}
+              {hasDur && ev.duracion > 0.5 && (
+                <span style={{ 
+                  marginLeft: 'auto', 
+                  fontSize: 8, 
+                  opacity: 0.7, 
+                  color: 'var(--color-texto-muted)', 
+                  paddingRight: 6, 
+                  fontFamily: 'monospace' 
+                }}>
+                  {ev.duracion.toFixed(1)}s
+                </span>
+              )}
+
+              {/* Handle de redimensionamiento de duración a la derecha */}
+              <div
+                onMouseDown={(e) => handleMouseDownResize(e, ev)}
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 8,
+                  cursor: 'ew-resize',
+                  borderRadius: '0 5px 5px 0',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.2s',
+                  zIndex: 20,
+                }}
+                onMouseEnter={(e) => { e.stopPropagation(); e.target.style.background = 'rgba(255, 255, 255, 0.2)' }}
+                onMouseLeave={(e) => { e.stopPropagation(); e.target.style.background = 'rgba(255, 255, 255, 0.08)' }}
+                title="Arrastrar para ajustar duración"
+              />
             </div>
           )
         })}

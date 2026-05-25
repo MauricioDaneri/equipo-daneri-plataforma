@@ -11,6 +11,7 @@ export default function BarraTitulo() {
   const cerrar     = () => window.api?.ventana.cerrar()
 
   const [online, setOnline] = useState(navigator.onLine)
+  const [syncStatus, setSyncStatus] = useState('idle') // 'idle' | 'syncing'
 
   useEffect(() => {
     const handleOnline = () => setOnline(true)
@@ -23,6 +24,16 @@ export default function BarraTitulo() {
     }
   }, [])
 
+  useEffect(() => {
+    const handleSyncEvent = (e) => {
+      if (e.detail && e.detail.status) {
+        setSyncStatus(e.detail.status)
+      }
+    }
+    window.addEventListener('sync:status', handleSyncEvent)
+    return () => window.removeEventListener('sync:status', handleSyncEvent)
+  }, [])
+
   return (
     <div style={estilos.barra}>
       {/* Zona arrastrable */}
@@ -32,9 +43,34 @@ export default function BarraTitulo() {
 
       {/* Controles de ventana */}
       <div style={estilos.controles}>
-        <div style={{ display: 'flex', alignItems: 'center', paddingRight: 16, color: online ? 'var(--color-exito)' : 'var(--color-rojo-suave)', gap: 6 }}>
-          {online ? <Cloud size={14} /> : <CloudOff size={14} />}
-          <span style={{ fontSize: 10, fontWeight: 600 }}>{online ? 'CLOUD SYNC' : 'OFFLINE MODE'}</span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          paddingRight: 16,
+          color: !online
+            ? 'var(--color-rojo-suave)'
+            : syncStatus === 'syncing'
+              ? 'var(--color-dorado)'
+              : 'var(--color-exito)',
+          gap: 6,
+          transition: 'color 0.3s ease'
+        }}>
+          {!online ? (
+            <CloudOff size={14} />
+          ) : syncStatus === 'syncing' ? (
+            <div className="spin" style={{ display: 'flex' }}>
+              <Cloud size={14} style={{ color: 'var(--color-dorado)', filter: 'drop-shadow(0 0 4px rgba(212,175,55,0.6))' }} />
+            </div>
+          ) : (
+            <Cloud size={14} />
+          )}
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.05em' }}>
+            {!online
+              ? 'OFFLINE MODE'
+              : syncStatus === 'syncing'
+                ? 'SINCRONIZANDO...'
+                : 'CLOUD SYNC'}
+          </span>
         </div>
         <button onClick={minimizar} style={estilos.boton} title="Minimizar">
           <Minus size={12} />

@@ -124,17 +124,31 @@ function iniciarServidorLocal() {
         })
       })
       
-      // Escuchar en la interfaz de loopback IPv4 explicitly
-      localServer.listen(0, '127.0.0.1', () => {
-        localServerPort = localServer.address().port
-        console.log(`[Server] Servidor nativo corriendo en http://127.0.0.1:${localServerPort}`)
-        resolve(localServerPort)
-      })
+      // ✅ Usar un puerto fijo (18080) para que el origen http://127.0.0.1:puerto sea constante.
+      // Si el puerto cambia en cada reinicio (puerto 0), IndexedDB y LocalStorage
+      // se aíslan por origen y se pierden los datos y la sesión del usuario.
+      const basePort = 18080
+      function intentarEscuchar(port) {
+        localServer.removeAllListeners('error')
+        
+        localServer.once('error', (err) => {
+          if (err.code === 'EADDRINUSE') {
+            console.log(`[Server] Puerto ${port} ocupado, intentando con ${port + 1}...`)
+            intentarEscuchar(port + 1)
+          } else {
+            console.error('[Server] Error en servidor nativo:', err)
+            resolve(0)
+          }
+        })
+        
+        localServer.listen(port, '127.0.0.1', () => {
+          localServerPort = port
+          console.log(`[Server] Servidor nativo corriendo en http://127.0.0.1:${localServerPort}`)
+          resolve(localServerPort)
+        })
+      }
       
-      localServer.on('error', (err) => {
-        console.error('[Server] Error en servidor nativo:', err)
-        resolve(0)
-      })
+      intentarEscuchar(basePort)
     } catch (e) {
       console.error('[Server] Error iniciando servidor local:', e)
       resolve(0) // fallback a file://

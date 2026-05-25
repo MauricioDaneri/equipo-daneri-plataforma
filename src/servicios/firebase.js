@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -13,7 +13,19 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Forzar persistencia de sesión local (LocalStorage) en Electron/Navegador para evitar cierres de sesión
+setPersistence(auth, browserLocalPersistence)
+  .catch((err) => {
+    console.error("[Firebase Auth] Error setting local persistence:", err);
+  });
+
 const dbFirestore = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
+
+// Forzar al selector de cuentas de Google para dejar elegir la cuenta al iniciar sesión
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 export { app, auth, dbFirestore, googleProvider };

@@ -315,29 +315,6 @@ export default function Inicio() {
           </div>
         </div>
 
-        <div style={estilos.panelGraficoGlobal}>
-          <div style={estilos.panelHeader}>
-            <h2 style={estilos.subtitulo}>VOLUMEN GLOBAL DE GOLPES</h2>
-          </div>
-          <div className="tarjeta" style={{ height: 280, padding: '20px 20px 10px 0', display: 'flex', flexDirection: 'column' }}>
-            <span style={{ paddingLeft: 20, fontSize: 11, color: 'var(--color-texto-suave)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>
-              Distribución histórica del gimnasio
-            </span>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volumenGolpes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--color-texto-suave)" fontSize={9} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--color-texto-suave)" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--color-superficie)', borderColor: 'var(--color-borde)', borderRadius: 8 }} />
-                <Bar dataKey="val" radius={[4, 4, 0, 0]}>
-                  {volumenGolpes.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
         <div style={estilos.panelRanking}>
           <div style={estilos.panelHeader}>
