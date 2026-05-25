@@ -1,6 +1,6 @@
 import { db } from './db'
 import { dbFirestore } from './firebase'
-import { collection, doc, setDoc, getDocs, writeBatch } from 'firebase/firestore'
+import { collection, doc, setDoc, getDocs, writeBatch, waitForPendingWrites } from 'firebase/firestore'
 
 /**
  * Módulo de sincronización en la nube (Firestore) para la Plataforma Equipo Daneri
@@ -156,6 +156,11 @@ export async function sincronizarLocalHaciaNube(uid) {
 
           await setDocConRetry(docRef, itemToSync, nombreColeccion, MAX_RETRIES)
           await new Promise(resolve => setTimeout(resolve, delayMs)) // Retardo entre documentos
+          try {
+            await waitForPendingWrites(dbFirestore)
+          } catch(e) {
+            console.warn('[Sync] Advertencia esperando pending writes (individual):', e)
+          }
         }
       } else {
         // Subida eficiente por writeBatch para grandes cantidades de documentos ligeros (eventos)
@@ -174,6 +179,11 @@ export async function sincronizarLocalHaciaNube(uid) {
           if (contador === sizeLimit) {
             await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
             await new Promise(resolve => setTimeout(resolve, delayMs))
+            try {
+              await waitForPendingWrites(dbFirestore)
+            } catch(e) {
+              console.warn('[Sync] Advertencia esperando pending writes (batch):', e)
+            }
             batch = writeBatch(dbFirestore)
             contador = 0
           }
@@ -182,6 +192,9 @@ export async function sincronizarLocalHaciaNube(uid) {
         if (contador > 0) {
           await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
           await new Promise(resolve => setTimeout(resolve, delayMs))
+          try {
+            await waitForPendingWrites(dbFirestore)
+          } catch(e) {}
         }
       }
     }
