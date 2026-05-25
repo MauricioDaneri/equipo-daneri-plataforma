@@ -365,6 +365,14 @@ autoUpdater.on('update-downloaded', () => {
 ipcMain.handle('actualizacion:instalar', () => {
   autoUpdater.quitAndInstall()
 })
+ipcMain.handle('actualizacion:buscar', async () => {
+  try {
+    const res = await autoUpdater.checkForUpdates()
+    return { ok: true, updateInfo: res?.updateInfo }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+})
 
 // ── IPC: Abrir archivo de video (diálogo del sistema) ────────────────────
 const { dialog } = require('electron')

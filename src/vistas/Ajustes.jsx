@@ -64,6 +64,45 @@ export default function Ajustes() {
   const [sincronizando, setSincronizando] = useState(false)
   const [ultimoSync, setUltimoSync] = useState(localStorage.getItem('ultimo_sync') || 'Nunca')
   const [usuarioEmail, setUsuarioEmail] = useState(auth.currentUser?.email || '')
+  const [buscandoActualizacion, setBuscandoActualizacion] = useState(false)
+
+  const handleBuscarActualizacion = async () => {
+    if (!window.api?.actualizacion?.buscar) {
+      mostrarAlerta({
+        titulo: "Función No Disponible",
+        mensaje: "La búsqueda de actualizaciones solo está disponible en la aplicación instalada de producción.",
+        tipo: "info"
+      })
+      return
+    }
+
+    setBuscandoActualizacion(true)
+    try {
+      const res = await window.api.actualizacion.buscar()
+      if (res && res.ok) {
+        mostrarAlerta({
+          titulo: "Búsqueda Iniciada",
+          mensaje: "Buscando actualizaciones en el repositorio de GitHub. Si hay una nueva versión disponible, se descargará automáticamente en segundo plano.",
+          tipo: "exito"
+        })
+      } else {
+        mostrarAlerta({
+          titulo: "Error al Buscar",
+          mensaje: `No se pudo conectar con el servidor de actualizaciones: ${res?.error || 'Error desconocido'}`,
+          tipo: "peligro"
+        })
+      }
+    } catch (e) {
+      console.error(e)
+      mostrarAlerta({
+        titulo: "Error",
+        mensaje: "Ocurrió un error al buscar la actualización.",
+        tipo: "peligro"
+      })
+    } finally {
+      setBuscandoActualizacion(false)
+    }
+  }
 
   const handleSincronizarNube = async () => {
     const user = auth.currentUser
@@ -413,6 +452,24 @@ export default function Ajustes() {
                 <Upload size={14} /> Importar Respaldo
                 <input type="file" accept=".json" onChange={handleImportarBackup} style={{ display: 'none' }} />
               </label>
+              <button 
+                className="boton-secundario" 
+                onClick={handleBuscarActualizacion} 
+                disabled={buscandoActualizacion}
+                style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '10px 14px', fontSize: 13 }}
+              >
+                {buscandoActualizacion ? (
+                  <>
+                    <RefreshCw size={14} className="spin" style={{ animation: 'spin 1.5s linear infinite' }} />
+                    Buscando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={14} />
+                    Buscar Actualizaciones
+                  </>
+                )}
+              </button>
             </div>
             
             <div style={{ borderTop: '1px dashed var(--color-borde)', paddingTop: 16, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>

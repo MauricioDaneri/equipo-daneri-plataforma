@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('api', {
   // Auto-updater
   actualizacion: {
     instalar:     () => ipcRenderer.invoke('actualizacion:instalar'),
+    buscar:       () => ipcRenderer.invoke('actualizacion:buscar'),
     onDisponible: (cb) => {
       const handler = () => cb()
       ipcRenderer.on('actualizacion:disponible', handler)
