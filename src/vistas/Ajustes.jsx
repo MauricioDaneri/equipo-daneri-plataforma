@@ -121,10 +121,10 @@ export default function Ajustes() {
 
     setSincronizando(true)
     try {
-      // 1. Descargar cambios de la nube a local
-      const resDescarga = await sincronizarNubeHaciaLocal(user.uid)
-      // 2. Subir cambios locales a la nube
+      // 1. Subir cambios locales a la nube primero (resguarda el trabajo del analista para que no sea sobrescrito por datos viejos)
       const resSubida = await sincronizarLocalHaciaNube(user.uid)
+      // 2. Descargar cambios de la nube a local segundo
+      const resDescarga = await sincronizarNubeHaciaLocal(user.uid)
 
       const timestamp = new Date().toLocaleString()
       localStorage.setItem('ultimo_sync', timestamp)
