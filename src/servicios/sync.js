@@ -7,6 +7,64 @@ import { collection, doc, setDoc, getDocs, writeBatch } from 'firebase/firestore
  * Permite respaldar la base de datos IndexedDB en Firestore y restaurarla.
  */
 
+// Función para comprimir una imagen base64 de forma asíncrona usando canvas
+async function comprimirBase64(base64Str, maxWidth = 256, maxHeight = 256) {
+  if (!base64Str || typeof window === 'undefined' || !globalThis.Image || !base64Str.startsWith('data:image')) {
+    return base64Str
+  }
+  
+  if (base64Str.length < 50000) {
+    return base64Str
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image()
+      img.src = base64Str
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width)
+              width = maxWidth
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height)
+              height = maxHeight
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            resolve(base64Str)
+            return
+          }
+          ctx.drawImage(img, 0, 0, width, height)
+          
+          const compressed = canvas.toDataURL('image/jpeg', 0.75)
+          resolve(compressed)
+        } catch (innerErr) {
+          console.warn('[Sync] Fallo interno al dibujar en canvas:', innerErr)
+          resolve(base64Str)
+        }
+      }
+      img.onerror = () => {
+        resolve(base64Str)
+      }
+    } catch (e) {
+      console.warn('[Sync] Error creando Image:', e)
+      resolve(base64Str)
+    }
+  })
+}
+
 // Sincroniza todos los datos locales hacia la nube (Firestore)
 export async function sincronizarLocalHaciaNube(uid) {
   if (!uid) throw new Error('Se requiere el UID del usuario para sincronizar con la nube.')
@@ -33,6 +91,15 @@ export async function sincronizarLocalHaciaNube(uid) {
       const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
       
       let itemToSync = { ...item }
+      
+      // Comprimir foto base64 pesada de los boxeadores antes de sincronizar a Firestore
+      if (nombreColeccion === 'boxeadores' && itemToSync.foto) {
+        try {
+          itemToSync.foto = await comprimirBase64(itemToSync.foto)
+        } catch (errFoto) {
+          console.warn('[Sync] Error comprimiendo foto de boxeador:', errFoto)
+        }
+      }
       
       // Sanitizar el videoPath en la nube para no revelar rutas de disco locales absolutas de Windows.
       // Guardamos sólo el nombre del archivo de video.
