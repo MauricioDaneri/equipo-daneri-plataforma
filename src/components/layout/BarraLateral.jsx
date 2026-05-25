@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -7,7 +7,9 @@ import {
   FileText,
   Settings,
   LogOut,
-  FlaskConical
+  FlaskConical,
+  BadgeCheck,
+  Crown
 } from 'lucide-react'
 import { db } from '../../servicios/db'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -17,14 +19,20 @@ import { signOut } from 'firebase/auth'
 
 export default function BarraLateral() {
   const { usuario, rol } = useAuth()
+  const location = useLocation()
+
+  // Recuperar el ID de la última sesión activa del editor
+  const lastSessionId = localStorage.getItem('equipo_daneri_last_active_session_id')
+  const editorPath = lastSessionId ? `/editor/${lastSessionId}` : '/editor'
   
   // Filtrar navegación según rol
   const NAV_ITEMS = [
     { ruta: '/inicio',   icono: LayoutDashboard, etiqueta: 'Inicio' },
+    { ruta: '/boxeadores', icono: Users,         etiqueta: 'Boxeadores' },
     { ruta: '/sesiones', icono: CalendarDays,     etiqueta: 'Sesiones' },
-    ...(rol !== 'boxeador' ? [{ ruta: '/editor',   icono: Video,            etiqueta: 'Editor Táctico' }] : []),
+    ...(rol !== 'boxeador' ? [{ ruta: editorPath,   icono: Video,            etiqueta: 'Editor Táctico' }] : []),
     ...(rol !== 'boxeador' ? [{ ruta: '/informes',  icono: FileText,         etiqueta: 'Informes' }] : []),
-    { ruta: '/seed',     icono: FlaskConical,     etiqueta: 'Seed & Test' }
+    { ruta: '/seed',     icono: FlaskConical,     etiqueta: 'Carga de Datos' }
   ]
 
   const handleLogout = async () => {
@@ -46,8 +54,8 @@ export default function BarraLateral() {
           onError={(e) => { e.target.style.display = 'none' }}
         />
         <div>
-          <div style={estilos.marcaPrincipal}>Equipo</div>
-          <div style={estilos.marcaPrincipal}>Daneri</div>
+          <div style={{ ...estilos.marcaPrincipal, color: 'var(--color-dorado)', fontSize: 13, letterSpacing: '0.1em', fontWeight: 800 }}>EQUIPO</div>
+          <div style={{ ...estilos.marcaPrincipal, color: '#FFFFFF', fontSize: 15, letterSpacing: '0.05em', fontWeight: 900 }}>DANERI</div>
         </div>
       </div>
 
@@ -55,27 +63,29 @@ export default function BarraLateral() {
 
       {/* Navegación */}
       <nav style={estilos.nav}>
-        {NAV_ITEMS.map(({ ruta, icono: Icono, etiqueta }) => (
-          <NavLink
-            key={ruta}
-            to={ruta}
-            style={({ isActive }) => ({
-              ...estilos.navItem,
-              color: isActive ? 'var(--color-dorado)' : 'var(--color-texto-suave)',
-              background: isActive ? 'var(--color-dorado-alfa)' : 'transparent',
-              borderLeft: isActive
-                ? '3px solid var(--color-dorado)'
-                : '3px solid transparent',
-            })}
-          >
-            {({ isActive }) => (
-              <>
-                <Icono size={18} strokeWidth={isActive ? 2.5 : 1.5} />
-                <span style={estilos.navEtiqueta}>{etiqueta}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map(({ ruta, icono: Icono, etiqueta }) => {
+          const active = ruta.startsWith('/editor')
+            ? location.pathname.startsWith('/editor')
+            : location.pathname === ruta;
+            
+          return (
+            <NavLink
+              key={ruta}
+              to={ruta}
+              style={{
+                ...estilos.navItem,
+                color: active ? 'var(--color-dorado)' : 'var(--color-texto-suave)',
+                background: active ? 'var(--color-dorado-alfa)' : 'transparent',
+                borderLeft: active
+                  ? '3px solid var(--color-dorado)'
+                  : '3px solid transparent',
+              }}
+            >
+              <Icono size={18} strokeWidth={active ? 2.5 : 1.5} />
+              <span style={estilos.navEtiqueta}>{etiqueta}</span>
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Ajustes (al fondo) */}
@@ -101,9 +111,39 @@ export default function BarraLateral() {
           ) : (
             <div style={estilos.analistaAvatar}>{usuario?.email?.substring(0,2).toUpperCase() || 'U'}</div>
           )}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <div style={estilos.analistaNombre}>{usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}</div>
-            <div style={estilos.analistaRol}>{rol ? rol.toUpperCase() : 'Cargando rol...'}</div>
+          <div style={{ flex: 1, overflow: 'visible', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={estilos.analistaNombre} title={usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}>
+                {usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}
+              </span>
+              {rol === 'admin' && (
+                <BadgeCheck size={14} color="#D4AF37" style={{ flexShrink: 0, filter: 'drop-shadow(0 0 3px rgba(212, 175, 55, 0.8))' }} />
+              )}
+            </div>
+            {rol === 'admin' ? (
+              <div style={{ display: 'flex', marginTop: 1 }}>
+                <span style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  color: '#D4AF37',
+                  background: 'rgba(212, 175, 55, 0.12)',
+                  border: '1px solid rgba(212, 175, 55, 0.3)',
+                  padding: '1px 5px',
+                  borderRadius: 4,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                  textShadow: '0 0 2px rgba(212, 175, 55, 0.4)'
+                }}>
+                  <Crown size={8} fill="#D4AF37" style={{ flexShrink: 0 }} /> ADMIN
+                </span>
+              </div>
+            ) : (
+              <div style={estilos.analistaRol}>{rol ? rol.toUpperCase() : 'Cargando rol...'}</div>
+            )}
           </div>
           <button onClick={handleLogout} style={estilos.btnLogout} title="Cerrar sesión">
             <LogOut size={16} color="var(--color-texto-suave)" />
@@ -137,7 +177,7 @@ const estilos = {
     height: 44,
     objectFit: 'contain',
     flexShrink: 0,
-    filter: 'drop-shadow(0 0 4px rgba(212,175,55,0.3))',
+    filter: 'drop-shadow(0 0 8px rgba(212, 175, 55, 0.55))',
   },
   marcaPrincipal: {
     color: 'var(--color-texto)',
@@ -177,12 +217,14 @@ const estilos = {
     display: 'flex',
     flexDirection: 'column',
     padding: '0',
+    WebkitAppRegion: 'no-drag',
   },
   analista: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     padding: '12px 16px 4px',
+    WebkitAppRegion: 'no-drag',
   },
   analistaAvatar: {
     width: 30,
@@ -210,9 +252,7 @@ const estilos = {
     color: 'var(--color-texto)',
     fontSize: 12,
     fontWeight: 600,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis'
+    whiteSpace: 'nowrap'
   },
   analistaRol: {
     color: 'var(--color-texto-suave)',
@@ -228,5 +268,6 @@ const estilos = {
     padding: '4px',
     borderRadius: '4px',
     transition: 'background 0.2s',
+    WebkitAppRegion: 'no-drag',
   }
 }

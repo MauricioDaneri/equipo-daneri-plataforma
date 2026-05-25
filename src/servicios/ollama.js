@@ -198,3 +198,27 @@ Esquema JSON a retornar:
   }
 }
 
+/**
+ * Consulta un veredicto analítico rápido para la sesión actual.
+ */
+export async function consultarVeredictoEinstein(prompt, temperatura = 0.4) {
+  const { url, modelo } = await getConfig()
+
+  const res = await fetch(`${url}/api/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: modelo,
+      prompt,
+      stream: false,
+      options: { temperature }
+    }),
+    signal: AbortSignal.timeout(30000),
+  })
+
+  if (!res.ok) throw new Error(`Ollama respondió con ${res.status}`)
+
+  const data = await res.json()
+  return data.response ?? ''
+}
+

@@ -37,6 +37,13 @@
 
   /* Transiciones */
   --transicion: 0.2s ease;
+
+  /* Keycaps Premium */
+  --color-keycap-bg-start: #303030;
+  --color-keycap-bg-end:   #222222;
+  --color-keycap-border:   #1a1a1a;
+  --color-keycap-shadow:   #111111;
+  --color-keycap-shadow-active: #b59328;
 }
 
 /* ── Reset Global ─────────────────────────────────────────────────── */
@@ -289,3 +296,12 @@ input, textarea, [contenteditable] {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-borde); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-texto-muted); }
+
+@media print { 
+  .no-print { display: none !important; } 
+  @page { size: A4; margin: 10mm; } 
+  body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+  .tarjeta { background: white !important; border: 1px solid #ccc !important; color: black !important; break-inside: avoid; } 
+  * { color: black !important; } 
+  h1, h3 { color: black !important; } 
+}

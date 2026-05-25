@@ -59,7 +59,7 @@ const LEVETI = {
 
 // ─── DATOS DE LA SESIÓN ───────────────────────────────────────────────────────
 const SESION = {
-  fecha:     new Date().toLocaleDateString('es-AR'),
+  fecha:     '2026-05-20',
   rounds:    4,
   sintesis:  'Análisis de 4 rounds del combate Iván Danele vs Leveti. Round 1 claramente dominado por Iván en el centro del ring. Excelente evasión de clinch. Leveti conecta derechas esporádicas. Iván recibió 2 golpes en el round 1.',
   videoPath: 'Ivan_vs_Leveti_22min.mp4',
@@ -80,16 +80,16 @@ const EVENTOS_TEMPLATE = [
   { tiempoVideo: t(R1_START, 5),   round: 1, tipo: 'Pivoteo',  esquina: 'azul',    nota: 'Iván toma el centro del ring. Rápido desde el inicio.' },
 
   // ~0:10 — Leveti lanza jab de respuesta
-  { tiempoVideo: t(R1_START, 10),  round: 1, tipo: 'Jab',      esquina: 'roja',    nota: 'Leveti contesta con jab. Iván más efectivo.' },
+  { tiempoVideo: t(R1_START, 10),  round: 1, tipo: 'Jab',      resultado: 'Conectado', esquina: 'roja',    nota: 'Leveti contesta con jab. Iván más efectivo.' },
 
   // ~0:30 — Iván conecta jab
-  { tiempoVideo: t(R1_START, 30),  round: 1, tipo: 'Jab',      esquina: 'azul',    nota: 'Jab de Iván. Mantiene distancia.' },
+  { tiempoVideo: t(R1_START, 30),  round: 1, tipo: 'Jab',      resultado: 'Conectado', esquina: 'azul',    nota: 'Jab de Iván. Mantiene distancia.' },
 
   // ~0:45 — Intercambio corto
-  { tiempoVideo: t(R1_START, 45),  round: 1, tipo: 'Golpe Conectado', esquina: 'azul', nota: 'Iván conecta.' },
+  { tiempoVideo: t(R1_START, 45),  round: 1, tipo: 'Recto',    resultado: 'Conectado', esquina: 'azul',    nota: 'Iván conecta con recto.' },
 
   // ~1:00 — Iván controla el ritmo
-  { tiempoVideo: t(R1_START, 60),  round: 1, tipo: 'Cross',    esquina: 'azul',    nota: 'Iván con cross. Domina el intercambio.' },
+  { tiempoVideo: t(R1_START, 60),  round: 1, tipo: 'Cross',    resultado: 'Conectado', esquina: 'azul',    nota: 'Iván con cross. Domina el intercambio.' },
 
   // ~1:15 — Leveti intenta clinch
   { tiempoVideo: t(R1_START, 75),  round: 1, tipo: 'Clinch',   esquina: 'roja',    nota: 'Leveti busca el clinch para frenar el ritmo de Iván.' },
@@ -98,27 +98,27 @@ const EVENTOS_TEMPLATE = [
   { tiempoVideo: t(R1_START, 76),  round: 1, tipo: 'Esquiva',  esquina: 'azul',    nota: 'Iván esquiva muy bien el clinch. Excelente lectura.' },
 
   // ~1:30 — Jab Iván
-  { tiempoVideo: t(R1_START, 90),  round: 1, tipo: 'Jab',      esquina: 'azul',    nota: 'Iván mantiene el jab como arma de control.' },
+  { tiempoVideo: t(R1_START, 90),  round: 1, tipo: 'Jab',      resultado: 'Conectado', esquina: 'azul',    nota: 'Iván mantiene el jab como arma de control.' },
 
   // ~1:45 — Iván domina el centro
   { tiempoVideo: t(R1_START, 105), round: 1, tipo: 'Pivoteo',  esquina: 'azul',    nota: 'Iván usa el pivote para mantener el ángulo ventajoso.' },
 
   // ~2:00 — Leveti intenta combinación
-  { tiempoVideo: t(R1_START, 120), round: 1, tipo: 'Jab',      esquina: 'roja',    nota: 'Leveti busca entrar con jab.' },
+  { tiempoVideo: t(R1_START, 120), round: 1, tipo: 'Jab',      resultado: 'Conectado', esquina: 'roja',    nota: 'Leveti busca entrar con jab.' },
   { tiempoVideo: t(R1_START, 121), round: 1, tipo: 'Bloqueo',  esquina: 'azul',    nota: 'Iván bloquea. Muy concentrado.' },
 
   // ~2:10 — Iván concentrado, espectacular
-  { tiempoVideo: t(R1_START, 123), round: 1, tipo: 'Golpe Conectado', esquina: 'azul', nota: 'Iván espectacular. Concentrado y efectivo. ~2:03 del round.' },
+  { tiempoVideo: t(R1_START, 123), round: 1, tipo: 'Swing',    resultado: 'Conectado', esquina: 'azul',    nota: 'Iván espectacular con un swing. Concentrado y efectivo. ~2:03 del round.' },
 
   // ~2:20 — Iván se come 2 manos
-  { tiempoVideo: t(R1_START, 140), round: 1, tipo: 'Golpe Conectado', esquina: 'roja', nota: 'Leveti conecta. Iván recibe 2 manos.' },
-  { tiempoVideo: t(R1_START, 142), round: 1, tipo: 'Golpe Conectado', esquina: 'roja', nota: 'Segunda mano de Leveti conectada.' },
+  { tiempoVideo: t(R1_START, 140), round: 1, tipo: 'Recto',    resultado: 'Conectado', esquina: 'roja',    nota: 'Leveti conecta recto. Iván recibe la mano.' },
+  { tiempoVideo: t(R1_START, 142), round: 1, tipo: 'Swing',    resultado: 'Conectado', esquina: 'roja',    nota: 'Segunda mano de Leveti conectada (Swing).' },
 
   // 2:30 round / ~6:30 video — Leveti toma el centro momentáneamente
   { tiempoVideo: t(R1_START, 150), round: 1, tipo: 'Pivoteo',  esquina: 'roja',    nota: 'Leveti busca el centro a los 2:30 del round.' },
 
   // 2:30 — Iván contesta con recto (Cross) + evasión muy precisa
-  { tiempoVideo: t(R1_START, 151), round: 1, tipo: 'Cross',    esquina: 'azul',    nota: 'Iván contesta con recto. Muy preciso. Evasión inmediata.' },
+  { tiempoVideo: t(R1_START, 151), round: 1, tipo: 'Cross',    resultado: 'Conectado', esquina: 'azul',    nota: 'Iván contesta con cross. Muy preciso. Evasión inmediata.' },
   { tiempoVideo: t(R1_START, 152), round: 1, tipo: 'Esquiva',  esquina: 'azul',    nota: 'Evasión muy precisa de Iván. Excelente footwork.' },
 
   // ~2:30-2:45 — Leveti lanza llaves / clinch
@@ -128,15 +128,15 @@ const EVENTOS_TEMPLATE = [
   { tiempoVideo: t(R1_START, 161), round: 1, tipo: 'Esquiva',  esquina: 'azul',    nota: 'Iván evade nuevamente. Domina la distancia.' },
 
   // ~2:45 — Leveti conecta derecha
-  { tiempoVideo: t(R1_START, 165), round: 1, tipo: 'Cross',    esquina: 'roja',    nota: 'Leveti conecta derecha. Buen golpe del rincón rojo.' },
-  { tiempoVideo: t(R1_START, 166), round: 1, tipo: 'Golpe Conectado', esquina: 'roja', nota: 'Derecha de Leveti conectada. Iván la recibe.' },
+  { tiempoVideo: t(R1_START, 165), round: 1, tipo: 'Cross',    resultado: 'Conectado', esquina: 'roja',    nota: 'Leveti conecta derecha con cross. Buen golpe del rincón rojo.' },
+  { tiempoVideo: t(R1_START, 166), round: 1, tipo: 'Recto',    resultado: 'Conectado', esquina: 'roja',    nota: 'Derecha de Leveti conectada con recto. Iván la recibe.' },
 
   // 2:57 round / 4:06 video — Iván recupera y toma el centro
   { tiempoVideo: 246,              round: 1, tipo: 'Pivoteo',  esquina: 'azul',    nota: 'Iván toma el centro del ring definitivamente. Minuto 2:57 del round / 4:06 del video.' },
 
   // Final Round 1
-  { tiempoVideo: t(R1_START, 175), round: 1, tipo: 'Jab',      esquina: 'azul',    nota: 'Último jab de Iván. Cierra el round dominando.' },
-  { tiempoVideo: t(R1_START, 178), round: 1, tipo: 'Cross',    esquina: 'azul',    nota: 'Cross final de Iván. Round 1 claramente para Iván.' },
+  { tiempoVideo: t(R1_START, 175), round: 1, tipo: 'Jab',      resultado: 'Conectado', esquina: 'azul',    nota: 'Último jab de Iván. Cierra el round dominando.' },
+  { tiempoVideo: t(R1_START, 178), round: 1, tipo: 'Cross',    resultado: 'Conectado', esquina: 'azul',    nota: 'Cross final de Iván. Round 1 claramente para Iván.' },
 
   // ═══════════════════════════════════════════════════════
   //  ROUND 2 — (8:00 - 11:00 video aprox.)
@@ -144,8 +144,8 @@ const EVENTOS_TEMPLATE = [
   // ═══════════════════════════════════════════════════════
 
   { tiempoVideo: t(R2_START, 5),   round: 2, tipo: 'Pivoteo',  esquina: 'azul',    nota: 'Iván arranca Round 2 buscando el centro.' },
-  { tiempoVideo: t(R2_START, 15),  round: 2, tipo: 'Jab',      esquina: 'azul',    nota: 'Jab de entrada Iván.' },
-  { tiempoVideo: t(R2_START, 30),  round: 2, tipo: 'Cross',    esquina: 'azul',    nota: 'Cross de Iván. Combinación.' },
+  { tiempoVideo: t(R2_START, 15),  round: 2, tipo: 'Jab',      resultado: 'Conectado', esquina: 'azul',    nota: 'Jab de entrada Iván.' },
+  { tiempoVideo: t(R2_START, 30),  round: 2, tipo: 'Cross',    resultado: 'Conectado', esquina: 'azul',    nota: 'Cross de Iván. Combinación.' },
   { tiempoVideo: t(R2_START, 60),  round: 2, tipo: 'Clinch',   esquina: 'roja',    nota: 'Leveti busca el clinch nuevamente.' },
   { tiempoVideo: t(R2_START, 61),  round: 2, tipo: 'Esquiva',  esquina: 'azul',    nota: 'Iván sale del clinch.' },
 
@@ -192,6 +192,7 @@ export async function seedIvanVsLeveti() {
       tiempoVideo: ev.tiempoVideo,
       round:       ev.round,
       tipo:        ev.tipo,
+      resultado:   ev.resultado ?? undefined,
       esquina:     ev.esquina,  // 'roja'=Iván, 'azul'=Leveti
       nota:        ev.nota,
     }))

@@ -7,12 +7,11 @@ import { Users, CalendarDays, Target, Settings, Plus, Edit2, Trash2, Search, Pla
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../servicios/db'
-import ModalBoxeador from '../components/ui/ModalBoxeador'
+import ModalNuevaSesion from '../components/ui/ModalNuevaSesion'
 
 export default function Inicio() {
   const navigate = useNavigate()
-  const [modalAbierto, setModalAbierto] = useState(false)
-  const [boxeadorAEditar, setBoxeadorAEditar] = useState(null)
+  const [modalNuevaSesionAbierto, setModalNuevaSesionAbierto] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const [filtroTiempo, setFiltroTiempo] = useState('todo') // 'todo' | 'mes' | 'semana'
   
@@ -28,7 +27,11 @@ export default function Inicio() {
   const { ranking, boxeadoresFiltrados, promedioEficaciaGym, actividadReciente, volumenGolpes, alertasIA, totalFiltradas } = useMemo(() => {
     let gymConectados = 0
     let gymErrados = 0
-    let golpesGlobales = { 'Jab': 0, 'Cross': 0, 'Gancho': 0, 'Uppercut': 0 }
+    let golpesGlobales = { 
+      'Jab': 0, 'Recto': 0, 'Cross': 0, 'Gancho': 0, 'Uppercut': 0, 'Swing': 0,
+      'Clinch': 0, 'Golpe Conectado': 0, 'Golpe Errado': 0, 
+      'Esquiva': 0, 'Bloqueo': 0, 'Finta': 0, 'Pivoteo': 0, 'Marca General': 0
+    }
 
     // Aplicar filtro de tiempo a las sesiones globales
     const hoy = new Date()
@@ -44,20 +47,36 @@ export default function Inicio() {
     const stats = boxeadoresDb.filter(b => !b.archivado).map(boxeador => {
       let conectados = 0
       let errados = 0
-      const golpes = { 'Jab': 0, 'Cross': 0, 'Gancho': 0, 'Uppercut': 0 }
+      const golpes = { 
+        'Jab': 0, 'Recto': 0, 'Cross': 0, 'Gancho': 0, 'Uppercut': 0, 'Swing': 0,
+        'Clinch': 0, 'Golpe Conectado': 0, 'Golpe Errado': 0,
+        'Esquiva': 0, 'Bloqueo': 0, 'Finta': 0, 'Pivoteo': 0, 'Marca General': 0
+      }
 
       const misSesiones = sesionesFiltradas.filter(s => s.boxeadorRojoId === boxeador.id || s.boxeadorAzulId === boxeador.id)
       
       misSesiones.forEach(s => {
         const miEsquina = s.boxeadorRojoId === boxeador.id ? 'roja' : 'azul'
         const misEventos = eventosDb.filter(e => e.sesionId === s.id && e.esquina === miEsquina)
+        const tieneEventosLegados = misEventos.some(e => e.tipo === 'Golpe Conectado' || e.tipo === 'Golpe Errado')
         
         misEventos.forEach(e => {
-          if (e.tipo === 'Golpe Conectado') conectados++
-          if (e.tipo === 'Golpe Errado') errados++
           if (golpes[e.tipo] !== undefined) {
             golpes[e.tipo]++
             golpesGlobales[e.tipo]++
+          }
+
+          if (tieneEventosLegados) {
+            if (e.tipo === 'Golpe Conectado') conectados++
+            if (e.tipo === 'Golpe Errado') errados++
+          } else {
+            if (["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(e.tipo)) {
+              if (e.resultado === 'Errado') {
+                errados++
+              } else {
+                conectados++
+              }
+            }
           }
         })
       })
@@ -72,10 +91,17 @@ export default function Inicio() {
         ...boxeador,
         eficacia,
         distribucion: [
-          { name: 'JAB', val: golpes['Jab'] },
-          { name: 'CROSS', val: golpes['Cross'] },
-          { name: 'HOOK', val: golpes['Gancho'] },
-          { name: 'UPPER', val: golpes['Uppercut'] }
+          { name: 'JAB', val: golpes['Jab'] || 0 },
+          { name: 'RECTO', val: golpes['Recto'] || 0 },
+          { name: 'CROSS', val: golpes['Cross'] || 0 },
+          { name: 'HOOK', val: golpes['Gancho'] || 0 },
+          { name: 'UPPER', val: golpes['Uppercut'] || 0 },
+          { name: 'SWING', val: golpes['Swing'] || 0 },
+          { name: 'CLINCH', val: golpes['Clinch'] || 0 },
+          { name: 'ESQ.', val: golpes['Esquiva'] || 0 },
+          { name: 'BLOQ.', val: golpes['Bloqueo'] || 0 },
+          { name: 'FINTA', val: golpes['Finta'] || 0 },
+          { name: 'PIVOT', val: golpes['Pivoteo'] || 0 }
         ]
       }
     })
@@ -131,19 +157,26 @@ export default function Inicio() {
     })
 
     // Insight 4: Golpe más errado del gimnasio
-    const tipoGolpes = ['Jab', 'Cross', 'Gancho', 'Uppercut']
-    const totalPorTipo = tipoGolpes.map(g => ({ name: g, val: golpesGlobales[g] }))
-    const masErrado = totalPorTipo.reduce((max, g) => g.val > max.val ? g : max, { name: '', val: 0 })
+    const tipoGolpes = ['Jab', 'Recto', 'Cross', 'Gancho', 'Uppercut', 'Swing', 'Clinch', 'Golpe Conectado', 'Golpe Errado', 'Esquiva', 'Bloqueo', 'Finta', 'Pivoteo']
+    const totalPorTipo = sesionesFiltradas.length > 0 ? tipoGolpes.map(g => ({ name: g, val: golpesGlobales[g] })) : []
+    const masErrado = totalPorTipo.length > 0 ? totalPorTipo.reduce((max, g) => g.val > max.val ? g : max, { name: '', val: 0 }) : { name: '', val: 0 }
     if (masErrado.val > 0) {
-      alertas.push({ tipo: 'info', icono: '🥊', texto: `El ${masErrado.name} es el golpe con mayor volumen del gym este período (${masErrado.val} golpes).` })
+      alertas.push({ tipo: 'info', icono: '🥊', texto: `El ${masErrado.name} es la acción con mayor volumen del gym este período (${masErrado.val} registradas).` })
     }
 
     // Volumen global para el gráfico de área
     const volumenArray = [
-      { name: 'JAB', val: golpesGlobales['Jab'] },
-      { name: 'CROSS', val: golpesGlobales['Cross'] },
-      { name: 'HOOK', val: golpesGlobales['Gancho'] },
-      { name: 'UPPER', val: golpesGlobales['Uppercut'] }
+      { name: 'JAB', val: golpesGlobales['Jab'] || 0, color: '#3498DB' },
+      { name: 'RECTO', val: golpesGlobales['Recto'] || 0, color: '#E74C3C' },
+      { name: 'CROSS', val: golpesGlobales['Cross'] || 0, color: '#9B59B6' },
+      { name: 'HOOK', val: golpesGlobales['Gancho'] || 0, color: '#2ECC71' },
+      { name: 'UPPER', val: golpesGlobales['Uppercut'] || 0, color: '#F1C40F' },
+      { name: 'SWING', val: golpesGlobales['Swing'] || 0, color: '#E67E22' },
+      { name: 'CLINCH', val: golpesGlobales['Clinch'] || 0, color: '#16A085' },
+      { name: 'ESQ.', val: golpesGlobales['Esquiva'] || 0, color: '#34495E' },
+      { name: 'BLOQ.', val: golpesGlobales['Bloqueo'] || 0, color: '#BDC3C7' },
+      { name: 'FINTA', val: golpesGlobales['Finta'] || 0, color: '#27AE60' },
+      { name: 'PIVOT', val: golpesGlobales['Pivoteo'] || 0, color: '#2980B9' }
     ]
 
     return { ranking: topRanking, boxeadoresFiltrados: filtrados, promedioEficaciaGym: prom, actividadReciente: recientes, volumenGolpes: volumenArray, alertasIA: alertas, totalFiltradas: sesionesFiltradas.length }
@@ -156,12 +189,18 @@ export default function Inicio() {
   }
 
   const archivarBoxeador = async (id, nombre) => {
-    if (window.confirm(`¿Estás seguro de archivar a ${nombre}? No aparecerá en las listas, pero sus sesiones no se borrarán.`)) {
+    const confirmado = await mostrarConfirmacion({
+      titulo: "Archivar Boxeador",
+      mensaje: `¿Estás seguro de archivar a ${nombre}? No aparecerá en las listas, pero sus sesiones no se borrarán.`,
+      textoConfirmar: "Archivar",
+      tipo: "advertencia"
+    });
+    if (confirmado) {
       await db.boxeadores.update(id, { archivado: true })
     }
   }
 
-  const coloresRanking = ['var(--color-dorado)', '#FFFFFF', 'var(--color-texto-suave)']
+  const coloresRanking = ['var(--color-dorado)', 'var(--color-texto)', 'var(--color-texto-suave)']
 
   return (
     <div style={estilos.pagina}>
@@ -228,11 +267,11 @@ export default function Inicio() {
       {/* QUICK ACTIONS & KPIs */}
       <section style={estilos.gridTop}>
         <div style={estilos.quickActionsContainer}>
-          <button onClick={() => abrirModal(null)} style={{...estilos.quickActionBtn, background: 'rgba(212,175,55,0.1)', borderColor: 'var(--color-dorado-alfa)'}}>
+          <button onClick={() => navigate('/boxeadores')} style={{...estilos.quickActionBtn, background: 'rgba(212,175,55,0.1)', borderColor: 'var(--color-dorado-alfa)'}}>
             <Plus size={24} color="var(--color-dorado)" />
             <span style={{color: 'var(--color-dorado)', fontWeight: 600}}>Nuevo Boxeador</span>
           </button>
-          <button onClick={() => navigate('/sesiones')} style={estilos.quickActionBtn}>
+          <button onClick={() => setModalNuevaSesionAbierto(true)} style={estilos.quickActionBtn}>
             <PlayCircle size={24} color="var(--color-texto)" />
             <span>Iniciar Sesión</span>
           </button>
@@ -243,9 +282,9 @@ export default function Inicio() {
         </div>
 
         <div style={estilos.gridKpis}>
-          <TarjetaKpi titulo="BOXEADORES" valor={totalBoxeadores.toString()} icono={Users} />
-          <TarjetaKpi titulo="SESIONES (PERIODO)" valor={totalFiltradas.toString()} icono={CalendarDays} />
-          <TarjetaKpi titulo="EFICACIA GLOBAL" valor={`${promedioEficaciaGym}%`} icono={Target} highlight />
+          <TarjetaKpi titulo="BOXEADORES" valor={totalBoxeadores.toString()} icono={Users} onClick={() => navigate('/boxeadores')} />
+          <TarjetaKpi titulo="SESIONES (PERIODO)" valor={totalFiltradas.toString()} icono={CalendarDays} onClick={() => navigate('/sesiones')} />
+          <TarjetaKpi titulo="PROMEDIO EFECTIVIDAD" valor={`${promedioEficaciaGym}%`} icono={Target} highlight />
         </div>
       </section>
 
@@ -261,7 +300,7 @@ export default function Inicio() {
               <div style={{ color: 'var(--color-texto-suave)', textAlign: 'center', marginTop: 40, fontSize: 13 }}>No hay sesiones recientes registradas.</div>
             ) : (
               actividadReciente.map(sesion => (
-                <div key={sesion.id} style={estilos.itemActividad} onClick={() => navigate('/sesiones')}>
+                <div key={sesion.id} style={estilos.itemActividad} onClick={() => navigate('/sesiones', { state: { vista: 'lista', sesionId: sesion.id } })}>
                   <div style={estilos.actividadIcono}>
                     <Activity size={16} color="var(--color-dorado)" />
                   </div>
@@ -285,19 +324,17 @@ export default function Inicio() {
               Distribución histórica del gimnasio
             </span>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={volumenGolpes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-dorado)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--color-dorado)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
+              <BarChart data={volumenGolpes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-borde)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--color-texto-suave)" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="name" stroke="var(--color-texto-suave)" fontSize={9} tickLine={false} axisLine={false} />
                 <YAxis stroke="var(--color-texto-suave)" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ backgroundColor: 'var(--color-superficie)', borderColor: 'var(--color-borde)', borderRadius: 8 }} />
-                <Area type="monotone" dataKey="val" stroke="var(--color-dorado)" fillOpacity={1} fill="url(#colorVal)" strokeWidth={2} />
-              </AreaChart>
+                <Bar dataKey="val" radius={[4, 4, 0, 0]}>
+                  {volumenGolpes.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -313,11 +350,11 @@ export default function Inicio() {
               ranking.map((b, i) => (
                 <div key={b.id} style={estilos.itemRanking}>
                   <div style={estilos.rankingHeader}>
-                    <span style={estilos.rankingNombre}><span style={{ color: coloresRanking[i] || '#ccc' }}>{i + 1}.</span> {b.nombre}</span>
+                    <span style={estilos.rankingNombre}><span style={{ color: coloresRanking[i] || 'var(--color-texto-suave)' }}>{i + 1}.</span> {b.nombre}</span>
                     <span style={estilos.rankingValor}>({b.eficacia}%)</span>
                   </div>
                   <div style={estilos.barraFondo}>
-                    <div style={{ ...estilos.barraProgreso, width: `${b.eficacia}%`, background: coloresRanking[i] || '#ccc' }} />
+                    <div style={{ ...estilos.barraProgreso, width: `${b.eficacia}%`, background: coloresRanking[i] || 'var(--color-texto-suave)' }} />
                   </div>
                 </div>
               ))
@@ -326,71 +363,23 @@ export default function Inicio() {
         </div>
       </section>
 
-      {/* BOXER PROFILES */}
-      <section style={{ paddingBottom: 40 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ ...estilos.subtitulo, marginBottom: 0 }}>ROSTER ACTIVO</h2>
-        </div>
-        <div style={estilos.gridPerfiles}>
-          {boxeadoresFiltrados.length === 0 ? (
-             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0', color: 'var(--color-texto-suave)' }}>
-               No se encontraron boxeadores.
-             </div>
-          ) : (
-            boxeadoresFiltrados.map(p => (
-              <div key={p.id} className="tarjeta" style={{...estilos.tarjetaPerfil, position: 'relative'}}>
-                <div style={estilos.accionesCard}>
-                  <button onClick={(e) => { e.stopPropagation(); abrirModal(p); }} style={estilos.btnMiniAccion} title="Editar"><Edit2 size={14}/></button>
-                  <button onClick={(e) => { e.stopPropagation(); archivarBoxeador(p.id, p.nombre); }} style={{...estilos.btnMiniAccion, color: 'var(--color-rojo-suave)'}} title="Archivar/Eliminar"><Trash2 size={14}/></button>
-                </div>
-                
-                <div style={{...estilos.perfilHeader, cursor: 'pointer', flexDirection: 'column', textAlign: 'center', gap: 16}} onClick={() => navigate(`/boxeador/${p.id}`)}>
-                  <div style={estilos.perfilAvatarGrand}>
-                    {p.foto ? (
-                      <img src={p.foto} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <Users size={32} color="var(--color-dorado-suave)" />
-                    )}
-                  </div>
-                  <div>
-                    <div style={estilos.perfilNombre}>{p.nombre}</div>
-                    <div style={estilos.perfilPeso}>{p.categoriaPeso} {p.estancia && `· ${p.estancia}`}</div>
-                  </div>
-                </div>
-                
-                <div style={{ marginTop: 16, cursor: 'pointer' }} onClick={() => navigate(`/boxeador/${p.id}`)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--color-texto-suave)', fontWeight: 600, letterSpacing: '0.05em' }}>MÉTRICA CLAVE</span>
-                    <span style={{ fontSize: 12, color: 'var(--color-dorado)', fontWeight: 700 }}>{p.eficacia}% Efectividad</span>
-                  </div>
-                  <div style={{ height: 80 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={p.distribucion} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barSize={20}>
-                        <XAxis dataKey="name" stroke="var(--color-texto-suave)" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: 'var(--color-superficie)', borderColor: 'var(--color-borde)', fontSize: 12 }} />
-                        <Bar dataKey="val" radius={[4, 4, 0, 0]}>
-                          {p.distribucion.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--color-dorado)' : 'var(--color-texto-suave)'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
-      <ModalBoxeador isOpen={modalAbierto} onClose={() => setModalAbierto(false)} boxeador={boxeadorAEditar} />
+      <ModalNuevaSesion 
+        isOpen={modalNuevaSesionAbierto} 
+        onClose={() => setModalNuevaSesionAbierto(false)} 
+        onCreated={(newId) => {
+          navigate(`/editor/${newId}`)
+        }}
+      />
     </div>
   )
 }
 
-function TarjetaKpi({ titulo, valor, icono: Icono, highlight }) {
+function TarjetaKpi({ titulo, valor, icono: Icono, highlight, onClick }) {
   return (
-    <div className="tarjeta-kpi" style={highlight ? { background: 'linear-gradient(145deg, rgba(212,175,55,0.1), var(--color-superficie))', borderColor: 'var(--color-dorado-alfa)' } : {}}>
+    <div className="tarjeta-kpi" onClick={onClick} style={{
+      ...(highlight ? { background: 'linear-gradient(145deg, rgba(212,175,55,0.1), var(--color-superficie))', borderColor: 'var(--color-dorado-alfa)' } : {}),
+      cursor: onClick ? 'pointer' : 'default'
+    }}>
       <div style={estilos.kpiHeader}>
         <span style={{...estilos.kpiTitulo, color: highlight ? 'var(--color-dorado)' : 'var(--color-texto-suave)'}}>{titulo}</span>
         <Icono size={18} color={highlight ? 'var(--color-dorado)' : 'var(--color-texto-suave)'} />
@@ -420,7 +409,7 @@ const estilos = {
   kpiHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   kpiTitulo: { fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' },
   
-  gridMiddle: { display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 24 },
+  gridMiddle: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 },
   panelActividad: { display: 'flex', flexDirection: 'column' },
   itemActividad: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: 'var(--color-superficie-2)', borderRadius: 8, cursor: 'pointer', border: '1px solid transparent', transition: 'border 0.2s' },
   actividadIcono: { background: 'rgba(212,175,55,0.1)', padding: 8, borderRadius: '50%' },

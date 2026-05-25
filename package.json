@@ -4,19 +4,22 @@
   "description": "Plataforma de Análisis — Equipo Daneri",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"electron .\"",
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "dev:vite": "vite",
     "build": "vite build",
     "electron:dev": "electron .",
     "electron:build": "npm run build && electron-builder",
     "preview": "vite preview",
     "test": "vitest run",
-    "audit": "node scripts/auditor.js"
+    "audit": "node C:\\Users\\mauri\\.gemini\\antigravity\\brain\\fcfa68e9-6147-4461-aaeb-4b3687f5a00f\\scratch\\search_all.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "cors": "^2.8.6",
     "dexie": "^4.0.7",
     "dexie-react-hooks": "^1.1.7",
     "electron-updater": "^6.2.1",
+    "express": "^5.2.1",
     "fabric": "^5.5.2",
     "firebase": "^12.13.0",
     "framer-motion": "^12.38.0",
@@ -29,6 +32,8 @@
     "recharts": "^2.12.7"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-react": "^7.28.5",
     "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^8.2.2",
@@ -44,7 +49,8 @@
     "appId": "com.equipodaneri.plataforma",
     "productName": "Plataforma de Análisis — Equipo Daneri",
     "directories": {
-      "output": "dist-electron"
+      "output": "E:\\INSTALADORES",
+      "buildResources": "public"
     },
     "publish": {
       "provider": "github",
@@ -52,8 +58,12 @@
       "repo": "equipo-daneri-plataforma"
     },
     "nsis": {
-      "oneClick": true,
-      "perMachine": false
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Equipo Daneri"
     },
     "win": {
       "target": "nsis",

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipo Daneri — Visor de Video</title>
+  <style>
+    :root {
+      --color-fondo:         #141414;
+      --color-superficie:    #1E1E1E;
+      --color-superficie-2:  #252525;
+      --color-borde:         #2A2A2A;
+      --color-dorado:        #D4AF37;
+      --color-dorado-suave:  #F0CC6A;
+      --color-dorado-alfa:   rgba(212, 175, 55, 0.12);
+      --color-texto:         #F0F0F0;
+      --color-texto-suave:   #9A9A9A;
+      --color-texto-muted:   #555555;
+      --color-rojo-suave:    #E74C3C;
+      --color-azul-suave:    #3498DB;
+      --color-exito:         #27AE60;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: transparent;
+      color: var(--color-texto);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      user-select: none;
+      position: relative;
+    }
+
+    #titlebar {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 24px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      -webkit-app-region: drag;
+      height: 48px;
+      gap: 32px;
+      z-index: 100;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    #titlebar h1 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-dorado);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #sync-status-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #sync-status {
+      font-size: 11px;
+      color: var(--color-texto-suave);
+      font-weight: 500;
+    }
+
+    #sync-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-texto-muted);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    #sync-indicator.active {
+      background: var(--color-exito);
+      box-shadow: 0 0 8px var(--color-exito);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.9); }
+    }
+
+    #video-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    /* Fullscreen mode: hide UI and set black background */
+    :fullscreen #titlebar,
+    :fullscreen #controlbar {
+      display: none !important;
+    }
+    :fullscreen body, 
+    :fullscreen #video-wrapper {
+      background: #000 !important;
+    }
+
+    #video-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #main-video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      z-index: 1;
+    }
+
+    #canvas-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #canvas-positioner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .canvas-container-custom {
+      position: absolute !important;
+      top: 0;
+      left: 0;
+    }
+
+    #round-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--color-dorado-alfa);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-dorado);
+      letter-spacing: 0.05em;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #no-video {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      text-align: center;
+      padding: 40px;
+      z-index: 2;
+    }
+
+    #no-video .icon-box {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--color-superficie);
+      border: 1px solid var(--color-borde);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-texto-muted);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      animation: float 4s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    #no-video h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-texto);
+    }
+
+    #no-video p {
+      font-size: 12px;
+      color: var(--color-texto-suave);
+      max-width: 320px;
+    }
+
+    #controlbar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 800px;
+      padding: 12px 24px;
+      background: rgba(20, 20, 20, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 100;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .time-display {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--color-texto-suave);
+      font-weight: 600;
+      min-width: 90px;
+    }
+
+    #timeline-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--color-superficie-2);
+      border-radius: 3px;
+      position: relative;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.02);
+    }
+
+    #timeline-progress {
+      height: 100%;
+      background: var(--color-dorado);
+      border-radius: 3px;
+      position: relative;
+      box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+    }
+
+    #eventos-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+  </style>
+  <script src="./fabric.min.js"></script>
+</head>
+<body>
+  <div id="titlebar">
+    <div style="display: flex; align-items: center; gap: 10px; -webkit-app-region: drag;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto-suave)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <line x1="8" y1="21" x2="16" y2="21"></line>
+        <line x1="12" y1="17" x2="12" y2="21"></line>
+      </svg>
+      <div style="font-size: 13px; font-weight: 600; color: var(--color-texto); letter-spacing: 0.02em;">
+        Equipo Daneri <span style="color: var(--color-texto-suave); font-weight: 400; margin-left: 4px;">| Visor Táctico</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div id="sync-status-wrapper">
+        <span id="sync-status">Sincronizando...</span>
+        <div id="sync-indicator"></div>
+      </div>
+      <button onclick="window.close()" style="background: transparent; border: none; color: var(--color-texto-suave); font-size: 16px; cursor: pointer; -webkit-app-region: no-drag; padding: 4px;">✕</button>
+    </div>
+  </div>
+
+  <div id="video-wrapper">
+    <!-- Pantalla Placeholder de espera -->
+    <div id="no-video">
+      <div class="icon-box">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polygon points="23 7 16 12 23 17 23 7"></polygon>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+        </svg>
+      </div>
+      <h2>Esperando Señal del Editor Táctico</h2>
+      <p>Carga un video o abre una sesión en la pantalla principal para iniciar la retransmisión.</p>
+    </div>
+
+    <!-- Contenedor del video y el lienzo -->
+    <div id="video-container" style="display: none;">
+      <video id="main-video" muted></video>
+      <div id="canvas-wrapper">
+        <div id="canvas-positioner">
+          <canvas id="canvas-overlay"></canvas>
+        </div>
+      </div>
+      <div id="round-badge" style="display: none;">
+        <span>ROUND</span>
+        <span id="round-num">1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de progreso e información -->
+  <div id="controlbar">
+    <span class="time-display" id="time-display">0:00 / 0:00</span>
+    <div id="timeline-bar">
+      <div id="timeline-progress" style="width: 0%;"></div>
+      <div id="eventos-overlay"></div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('main-video');
+    const noVideo = document.getElementById('no-video');
+    const videoContainer = document.getElementById('video-container');
+    const roundBadge = document.getElementById('round-badge');
+    const roundNum = document.getElementById('round-num');
+    const syncStatus = document.getElementById('sync-status');
+    const syncIndicator = document.getElementById('sync-indicator');
+    const timeDisplay = document.getElementById('time-display');
+    const timelineProgress = document.getElementById('timeline-progress');
+    const eventosOverlay = document.getElementById('eventos-overlay');
+    const timelineBar = document.getElementById('timeline-bar');
+
+    let currentVideoUrl = null;
+    let canvas = null;
+    let originalWidth = 800;
+    let originalHeight = 450;
+
+    function formatTime(s) {
+      if (!s || isNaN(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${m}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    let isSyncingFromEditor = false;
+
+    // Inicializar fabric.Canvas interactivo
+    function initCanvas() {
+      const positioner = document.getElementById('canvas-positioner');
+      const rect = positioner.getBoundingClientRect();
+      
+      const canvasEl = document.getElementById('canvas-overlay');
+      canvasEl.width = rect.width;
+      canvasEl.height = rect.height;
+
+      if (canvas) {
+        canvas.dispose();
+      }
+
+      canvas = new fabric.Canvas('canvas-overlay', {
+        width: rect.width || 800,
+        height: rect.height || 450,
+        containerClass: 'canvas-container-custom'
+      });
+
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.width = 4;
+      }
+
+      const notifyEditor = () => {
+        if (isSyncingFromEditor) return;
+        if (window.api && window.api.video) {
+          window.api.video.enviarMensajeDesdeViewer({
+            type: 'CANVAS_UPDATE_FROM_VIEWER',
+            payload: { canvasData: JSON.stringify(canvas.toJSON()) }
+          });
+        }
+      };
+
+      canvas.on('object:added', notifyEditor);
+      canvas.on('object:modified', notifyEditor);
+      canvas.on('object:removed', notifyEditor);
+    }
+
+    // Ajustar tamaño del canvas y posicionador según el video real (aspect ratio)
+    function ajustarLienzo() {
+      if (!video || video.readyState < 1) return;
+      
+      const container = document.getElementById('video-container');
+      const positioner = document.getElementById('canvas-positioner');
+      
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      
+      if (!videoWidth || !videoHeight) return;
+
+      const containerRatio = containerWidth / containerHeight;
+      const videoRatio = videoWidth / videoHeight;
+
+      let w = containerWidth;
+      let h = containerHeight;
+
+      if (videoRatio > containerRatio) {
+        // Limitado por ancho
+        h = containerWidth / videoRatio;
+      } else {
+        // Limitado por alto
+        w = containerHeight * videoRatio;
+      }
+
+      // Sizer el positioner del canvas para que calce 1:1 con el frame contenido del video
+      positioner.style.width = w + 'px';
+      positioner.style.height = h + 'px';
+      positioner.style.position = 'absolute';
+      
+      // Centrarlo
+      positioner.style.left = ((containerWidth - w) / 2) + 'px';
+      positioner.style.top = ((containerHeight - h) / 2) + 'px';
+
+      // Redimensionar el StaticCanvas de fabric
+      if (canvas) {
+        canvas.setWidth(w);
+        canvas.setHeight(h);
+        
+        // Volver a aplicar el viewport transform para la nueva dimensión
+        const scaleX = w / originalWidth;
+        const scaleY = h / originalHeight;
+        canvas.setViewportTransform([scaleX, 0, 0, scaleY, 0, 0]);
+        canvas.renderAll();
+      }
+    }
+
+    function renderEventos(eventos, duracion) {
+      eventosOverlay.innerHTML = '';
+      if (!eventos || !duracion) return;
+      eventos.forEach(ev => {
+        const t = ev.tiempoVideo ?? ev.timestamp;
+        const pct = (t / duracion) * 100;
+        const dot = document.createElement('div');
+        dot.style.cssText = `
+          position: absolute;
+          left: ${pct}%;
+          top: -2px;
+          width: 3px;
+          height: 10px;
+          border-radius: 1px;
+          background: ${ev.esquina === 'roja' ? '#e74c3c' : ev.esquina === 'azul' ? '#3498db' : '#d4af37'};
+          transform: translateX(-50%);
+          pointer-events: none;
+          box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        `;
+        eventosOverlay.appendChild(dot);
+      });
+    }
+
+    if (window.api && window.api.video) {
+      window.api.video.onMensajeSync((eventData) => {
+        const { type, payload } = eventData;
+        console.log("[Visor] Received message from editor:", type, payload);
+
+        if (type === 'VIDEO_LOADED') {
+          currentVideoUrl = payload.url;
+          video.src = payload.url;
+          
+          noVideo.style.display = 'none';
+          videoContainer.style.display = 'flex';
+          roundBadge.style.display = 'block';
+          
+          syncStatus.textContent = 'Enlazado y Retransmitiendo';
+          syncIndicator.className = 'active';
+
+          // Inicializar dimensiones
+          setTimeout(() => {
+            initCanvas();
+            ajustarLienzo();
+          }, 100);
+        }
+
+        if (type === 'TIME_UPDATE') {
+          // Evitar saltos bruscos si el tiempo es cercano
+          if (Math.abs(video.currentTime - payload.currentTime) > 0.3) {
+            video.currentTime = payload.currentTime;
+          }
+          const dur = video.duration || payload.duracion || 0;
+          const pct = dur > 0 ? (payload.currentTime / dur) * 100 : 0;
+          timelineProgress.style.width = pct + '%';
+          timeDisplay.textContent = `${formatTime(payload.currentTime)} / ${formatTime(dur)}`;
+          
+          if (payload.round) {
+            roundNum.textContent = payload.round;
+          }
+        }
+
+        if (type === 'PLAY') {
+          video.play().catch(() => {});
+        }
+        if (type === 'PAUSE') {
+          video.pause();
+        }
+
+        if (type === 'ROUND_UPDATE') {
+          roundNum.textContent = payload.round;
+        }
+
+        if (type === 'EVENTOS_UPDATE') {
+          renderEventos(payload.eventos, video.duration);
+        }
+
+        if (type === 'DRAWING_TOOL_UPDATE') {
+          if (canvas) {
+            const { herramientaActiva, colorActivo } = payload;
+            canvas.isDrawingMode = (herramientaActiva === 'lapiz');
+            if (canvas.freeDrawingBrush) {
+              canvas.freeDrawingBrush.color = colorActivo || 'red';
+            }
+            const wrapper = document.getElementById('canvas-wrapper');
+            if (wrapper) {
+              wrapper.style.pointerEvents = (herramientaActiva === 'lapiz') ? 'auto' : 'none';
+            }
+          }
+        }
+
+        if (type === 'CANVAS_UPDATE') {
+          if (!canvas) {
+            initCanvas();
+            ajustarLienzo();
+          }
+          if (canvas) {
+            isSyncingFromEditor = true;
+            originalWidth = payload.width || 800;
+            originalHeight = payload.height || 450;
+            
+            canvas.loadFromJSON(payload.canvasData, () => {
+              const scaleX = canvas.width / originalWidth;
+              const scaleY = canvas.height / originalHeight;
+              canvas.setViewportTransform([scaleX, 0, 0, scaleY, 0, 0]);
+              canvas.renderAll();
+              isSyncingFromEditor = false;
+            });
+          }
+        }
+
+        if (type === 'VIDEO_UNLOADED') {
+          video.src = '';
+          videoContainer.style.display = 'none';
+          noVideo.style.display = 'flex';
+          roundBadge.style.display = 'none';
+          currentVideoUrl = null;
+          syncStatus.textContent = 'Sincronizando...';
+          syncIndicator.className = '';
+          if (canvas) {
+            canvas.clear();
+          }
+        }
+      });
+    }
+
+    video.addEventListener('loadedmetadata', () => {
+      ajustarLienzo();
+    });
+
+    video.addEventListener('timeupdate', () => {
+      console.log("[Visor] video.timeupdate event: currentTime =", video.currentTime);
+    });
+
+    window.addEventListener('resize', () => {
+      ajustarLienzo();
+    });
+
+    timelineBar.addEventListener('click', (e) => {
+      if (!video || !video.duration) return;
+      const rect = timelineBar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+      const targetTime = pct * video.duration;
+      console.log("[Visor] User clicked timeline-bar. targetTime =", targetTime);
+      video.currentTime = targetTime;
+      if (window.api && window.api.video) {
+        window.api.video.enviarMensajeDesdeViewer({
+          type: 'SEEK_FROM_VIEWER',
+          payload: { currentTime: targetTime }
+        });
+      }
+    });
+
+    const videoWrapper = document.getElementById('video-wrapper');
+    if (videoWrapper) {
+      videoWrapper.addEventListener('dblclick', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error("Error attempting to enable fullscreen:", err);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      });
+    }
+
+    // Indicar al editor que el visor está listo para recibir el flujo de estado
+    if (window.api && window.api.video) {
+      window.api.video.enviarMensajeDesdeViewer({ type: 'VIEWER_READY' });
+    }
+  </script>
+</body>
+</html>

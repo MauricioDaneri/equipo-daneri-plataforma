@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Save, Server, User, AlertTriangle, Trash2, ShieldAlert, Keyboard, Plus, UserCheck } from 'lucide-react'
+import { Save, Server, User, AlertTriangle, Trash2, ShieldAlert, Keyboard, Plus, UserCheck, HelpCircle, Upload, Download } from 'lucide-react'
 import { db } from '../servicios/db'
+import { useModal } from '../context/ModalContext'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 // Default hotkeys en caso de que falten en la DB
 const defaultHotkeys = {
   RinconRojo: 'KeyQ', RinconAzul: 'KeyW',
-  Jab: 'KeyJ', Cross: 'KeyC', Gancho: 'KeyG', Uppercut: 'KeyU',
-  Esquiva: 'KeyE', Bloqueo: 'KeyB', Finta: 'KeyF',
+  Jab: 'KeyJ', Recto: 'KeyR', Cross: 'KeyC', Gancho: 'KeyG', Uppercut: 'KeyU', Swing: 'KeyS',
+  Finta: 'KeyF', Esquiva: 'KeyE', Bloqueo: 'KeyB', Clinch: 'KeyK', Pivoteo: 'KeyP', "Marca General": 'KeyM',
   PlayPause: 'Space', Atras: 'ArrowLeft', Adelante: 'ArrowRight',
   Cursor: 'Digit1', Lapiz: 'Digit2'
 }
 
 const formatearTecla = (code) => {
+  if (!code) return ''
   if (code.startsWith('Key')) return code.replace('Key', '')
   if (code.startsWith('Digit')) return code.replace('Digit', '')
   if (code === 'Space') return 'Espacio'
@@ -21,7 +23,31 @@ const formatearTecla = (code) => {
   return code
 }
 
+// Descripciones de las acciones de los atajos tácticos en el boxeo profesional
+const DESCRIPCIONES_ATAJOS = {
+  RinconRojo: 'Establece la asignación de los golpes y acciones subsiguientes al Rincón Rojo.',
+  RinconAzul: 'Establece la asignación de los golpes y acciones subsiguientes al Rincón Azul.',
+  Jab: 'Golpe directo de la mano adelantada usado para mantener distancia y puntuar.',
+  Recto: 'Golpe fuerte directo lanzado con potencia desde la guardia.',
+  Cross: 'Golpe cruzado directo fuerte lanzado con la mano atrasada.',
+  Gancho: 'Golpe curvo lateral dirigido a la cabeza o flanco del cuerpo.',
+  Uppercut: 'Golpe ascendente vertical lanzado en distancia corta.',
+  Swing: 'Golpe curvo largo lanzado con la trayectoria abierta de forma descendente o lateral.',
+  Finta: 'Movimiento engañoso para provocar una reacción del oponente.',
+  Esquiva: 'Acción evasiva (cabeceo o cintura) para esquivar golpes sin contactar la guardia.',
+  Bloqueo: 'Intercepción de golpes con los guantes, antebrazos o codos.',
+  Clinch: 'Maniobra táctica defensiva para sujetar al rival en distancia corta.',
+  Pivoteo: 'Desplazamiento angular sobre un pie para cambiar la línea de ataque.',
+  "Marca General": 'Coloca una marca en la línea de tiempo para anotaciones generales o momentos específicos.',
+  PlayPause: 'Pausa o reanuda la reproducción del video táctico.',
+  Atras: 'Retrocede el video táctico 5 segundos para re-analizar la jugada.',
+  Adelante: 'Avanza el video táctico 5 segundos para omitir tiempos muertos.',
+  Cursor: 'Cambia a modo cursor interactivo para seleccionar marcas o timelines.',
+  Lapiz: 'Activa la herramienta de lápiz para dibujar directamente sobre la pantalla de video.',
+}
+
 export default function Ajustes() {
+  const { mostrarConfirmacion, mostrarAlerta } = useModal()
   const [config, setConfig] = useState({
     ollamaUrl: 'http://localhost:11434',
     ollamaModelo: 'llama3.2',
@@ -51,7 +77,7 @@ export default function Ajustes() {
       // Chequear colisiones
       const valoresUsados = Object.values(config.hotkeys)
       if (valoresUsados.includes(e.code) && config.hotkeys[capturando] !== e.code) {
-        alert(`La tecla [${formatearTecla(e.code)}] ya está en uso por otra acción.`)
+        mostrarAlerta({ titulo: 'Atajo Ocupado', mensaje: `La tecla [${formatearTecla(e.code)}] ya está en uso por otra acción.`, tipo: 'advertencia' })
         setCapturando(null)
         return
       }
@@ -78,12 +104,96 @@ export default function Ajustes() {
   }
 
   const handleBorrarBaseDeDatos = async () => {
-    const confirmacion = window.confirm("⚠️ ADVERTENCIA DE SEGURIDAD ⚠️\n\n¿Estás absolutamente seguro de que quieres borrar TODOS los boxeadores, sesiones y análisis?\nEsta acción NO se puede deshacer.")
+    const confirmacion = await mostrarConfirmacion({ titulo: "Restablecer Base de Datos", mensaje: "¿Estás absolutamente seguro de que quieres borrar TODOS los boxeadores, sesiones y análisis?\nEsta acción NO se puede deshacer.", textoConfirmar: "Sí, Borrar Todo", tipo: "peligro" })
     if (confirmacion) {
+      localStorage.setItem('db_manually_cleared', 'true') // Prevenir recuperación automática al recargar
       await db.delete()
       window.location.reload()
     }
   }
+
+  const handleExportarBackup = async () => {
+    try {
+      const data = {
+        boxeadores: await db.boxeadores.toArray(),
+        sesiones: await db.sesiones.toArray(),
+        eventos: await db.eventos.toArray(),
+        configuracion: await db.configuracion.toArray(),
+        analistas: await db.analistas.toArray(),
+        logsErrores: await db.logsErrores.toArray()
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `backup_daneri_plataforma_${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+      mostrarAlerta({ titulo: "Error al Exportar", mensaje: "Hubo un problema al exportar la base de datos.", tipo: "peligro" })
+    }
+  }
+
+  const handleImportarBackup = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const confirmado = await mostrarConfirmacion({ titulo: "Importar Respaldo", mensaje: "¿Estás seguro de que quieres importar este respaldo?\nEsto reemplazará y combinará los datos actuales con los del archivo.", textoConfirmar: "Importar", tipo: "advertencia" });
+    if (!confirmado) return;
+    
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result)
+        
+        if (data.boxeadores) {
+          for (const b of data.boxeadores) {
+            await db.boxeadores.put(b)
+          }
+        }
+        if (data.sesiones) {
+          for (const s of data.sesiones) {
+            await db.sesiones.put(s)
+          }
+        }
+        if (data.eventos) {
+          for (const ev of data.eventos) {
+            await db.eventos.put(ev)
+          }
+        }
+        if (data.analistas) {
+          for (const a of data.analistas) {
+            await db.analistas.put(a)
+          }
+        }
+        if (data.logsErrores) {
+          for (const le of data.logsErrores) {
+            await db.logsErrores.put(le)
+          }
+        }
+        if (data.configuracion && data.configuracion.length > 0) {
+          await db.configuracion.put(data.configuracion[0])
+        }
+        
+        await mostrarAlerta({ titulo: "Restauración Exitosa", mensaje: "¡Base de datos restaurada exitosamente!", tipo: "exito" })
+        window.location.reload()
+      } catch (err) {
+        console.error(err)
+        mostrarAlerta({ titulo: "Error al Importar", mensaje: "Error al procesar el archivo de respaldo. Asegúrate de elegir un archivo JSON válido.", tipo: "peligro" })
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const totalErrores = useLiveQuery(() => db.logsErrores.count()) ?? 0
+
+  const handleLimpiarLogs = async () => {
+    const confirmado = await mostrarConfirmacion({ titulo: "Limpiar Logs", mensaje: "¿Limpiar todos los reportes de error de la base de datos?", textoConfirmar: "Limpiar", tipo: "advertencia" });
+    if (confirmado) {
+      await db.logsErrores.clear()
+    }
+  }
+
 
   const handleAgregarAnalista = async (e) => {
     e.preventDefault()
@@ -108,7 +218,8 @@ export default function Ajustes() {
   }
 
   const handleEliminarAnalista = async (id) => {
-    if (window.confirm('¿Eliminar este perfil de analista?')) {
+    const confirmado = await mostrarConfirmacion({ titulo: "Eliminar Analista", mensaje: "¿Seguro que deseas eliminar este perfil de analista?", textoConfirmar: "Eliminar", tipo: "peligro" });
+    if (confirmado) {
       await db.analistas.delete(id)
       if (config.analistaActivoId === id) {
         const restantes = await db.analistas.toArray()
@@ -120,13 +231,16 @@ export default function Ajustes() {
   }
 
   const renderAtajo = (clave, label) => (
-    <div style={estilos.atajoRow}>
-      <span style={estilos.atajoLabel}>{label}</span>
+    <div style={estilos.atajoRow} key={clave}>
+      <div style={estilos.atajoInfo}>
+        <span style={estilos.atajoLabel}>{label}</span>
+        <span style={estilos.atajoDesc}>{DESCRIPCIONES_ATAJOS[clave]}</span>
+      </div>
       <button 
         style={capturando === clave ? estilos.btnAtajoCapturando : estilos.btnAtajo}
         onClick={() => setCapturando(clave)}
       >
-        {capturando === clave ? 'Presiona una tecla...' : formatearTecla(config.hotkeys[clave] || '')}
+        {capturando === clave ? 'PRESIONA...' : formatearTecla(config.hotkeys[clave] || '')}
       </button>
     </div>
   )
@@ -135,6 +249,9 @@ export default function Ajustes() {
     <div style={estilos.pagina}>
       <header style={estilos.header}>
         <h1 style={estilos.tituloSeccion}>AJUSTES DEL SISTEMA</h1>
+        <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-texto-suave)' }}>
+          Configuración global del motor de inteligencia artificial local, gestión de roster de entrenadores y mapeo de teclas físicas.
+        </p>
       </header>
 
       <div style={estilos.grid}>
@@ -194,8 +311,48 @@ export default function Ajustes() {
             </form>
           </div>
 
+          {/* --- Respaldo y Diagnóstico (Backup & Diagnostics) --- */}
+          <div className="tarjeta" style={{ ...estilos.tarjeta, border: '1px solid var(--color-borde)' }}>
+            <div style={estilos.headerTarjeta}>
+              <Download size={20} color="var(--color-dorado)" />
+              <h2 style={estilos.tituloTarjeta}>Copia de Seguridad y Diagnóstico</h2>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--color-texto-suave)', margin: 0, lineHeight: 1.5 }}>
+              Exporta tu base de datos local para salvaguardar tu información antes de una actualización de software, o importa un respaldo previo.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button className="boton-primario" onClick={handleExportarBackup} style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '10px 14px', fontSize: 13 }}>
+                <Download size={14} /> Exportar Respaldo (.json)
+              </button>
+              <label className="boton-secundario" style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '10px 14px', fontSize: 13, cursor: 'pointer', margin: 0 }}>
+                <Upload size={14} /> Importar Respaldo
+                <input type="file" accept=".json" onChange={handleImportarBackup} style={{ display: 'none' }} />
+              </label>
+            </div>
+            
+            <div style={{ borderTop: '1px dashed var(--color-borde)', paddingTop: 16, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-texto)' }}>Registro de Errores Técnicos</span>
+                  <div style={{ fontSize: 11, color: 'var(--color-texto-suave)', marginTop: 2 }}>
+                    Reportes registrados en IndexedDB: {totalErrores}
+                  </div>
+                </div>
+                {totalErrores > 0 && (
+                  <button className="boton-secundario" onClick={handleLimpiarLogs} style={{ padding: '6px 12px', fontSize: 11, color: 'var(--color-rojo-suave)', borderColor: 'var(--color-borde)' }}>
+                    Limpiar Logs
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-texto-suave)', lineHeight: 1.4, background: 'rgba(0,0,0,0.15)', padding: '10px', borderRadius: 6, border: '1px solid var(--color-borde)' }}>
+                ℹ️ Los errores también se escriben automáticamente en <code>logs_errores.json</code> en la raíz del proyecto para que Antigravity pueda corregirlos de inmediato si los reportas en el chat.
+              </div>
+            </div>
+          </div>
+
           {/* --- Zona de Peligro --- */}
           <div className="tarjeta" style={{ ...estilos.tarjeta, border: '1px solid rgba(231, 76, 60, 0.3)' }}>
+
             <div style={estilos.headerTarjeta}>
               <ShieldAlert size={20} color="var(--color-rojo-suave)" />
               <h2 style={{ ...estilos.tituloTarjeta, color: 'var(--color-rojo-suave)' }}>Zona de Peligro</h2>
@@ -228,14 +385,19 @@ export default function Ajustes() {
                 
                 <h4 style={estilos.subtituloAtajos}>Ofensiva</h4>
                 {renderAtajo('Jab', 'Jab')}
+                {renderAtajo('Recto', 'Recto')}
                 {renderAtajo('Cross', 'Cross')}
                 {renderAtajo('Gancho', 'Gancho')}
                 {renderAtajo('Uppercut', 'Uppercut')}
+                {renderAtajo('Swing', 'Swing')}
                 
-                <h4 style={estilos.subtituloAtajos}>Defensiva</h4>
+                <h4 style={estilos.subtituloAtajos}>Defensa / Movimiento / Otros</h4>
+                {renderAtajo('Finta', 'Finta')}
                 {renderAtajo('Esquiva', 'Esquiva')}
                 {renderAtajo('Bloqueo', 'Bloqueo')}
-                {renderAtajo('Finta', 'Finta')}
+                {renderAtajo('Clinch', 'Clinch')}
+                {renderAtajo('Pivoteo', 'Pivoteo')}
+                {renderAtajo('Marca General', 'Marca General')}
               </div>
 
               <div style={estilos.columnaAtajos}>
@@ -279,11 +441,45 @@ const estilos = {
   barraAcciones: { marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16, paddingTop: 32, borderTop: '1px solid var(--color-borde)' },
   
   // Atajos
-  gridAtajos: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 },
+  gridAtajos: { display: 'flex', flexDirection: 'column', gap: 20 },
   columnaAtajos: { display: 'flex', flexDirection: 'column', gap: 12 },
   subtituloAtajos: { fontSize: 11, color: 'var(--color-dorado)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px dashed rgba(212,175,55,0.3)', paddingBottom: 4, margin: '8px 0 0 0' },
-  atajoRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  atajoLabel: { fontSize: 13, color: 'var(--color-texto)', fontWeight: 500 },
-  btnAtajo: { background: 'var(--color-superficie-2)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, fontFamily: 'monospace', cursor: 'pointer', minWidth: 60, textAlign: 'center' },
-  btnAtajoCapturando: { background: 'var(--color-dorado)', border: '1px solid var(--color-dorado)', color: 'var(--color-fondo)', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, fontFamily: 'monospace', cursor: 'pointer', minWidth: 60, textAlign: 'center', boxShadow: '0 0 10px rgba(212,175,55,0.5)' },
+  atajoRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--color-superficie-2)', borderRadius: 8, border: '1px solid var(--color-borde)', transition: 'all 0.2s' },
+  atajoInfo: { display: 'flex', flexDirection: 'column', gap: 4, flex: 1, paddingRight: 16 },
+  atajoLabel: { fontSize: 13, color: 'var(--color-texto)', fontWeight: 600 },
+  atajoDesc: { fontSize: 11, color: 'var(--color-texto-suave)', lineHeight: '1.4' },
+  
+  // Estilo premium de Keycap con relieve 3D
+  btnAtajo: { 
+    background: 'linear-gradient(to bottom, var(--color-keycap-bg-start), var(--color-keycap-bg-end))', 
+    border: '1px solid var(--color-keycap-border)', 
+    borderBottom: '3px solid var(--color-keycap-shadow)',
+    color: 'var(--color-texto)', 
+    padding: '8px 16px', 
+    borderRadius: 6, 
+    fontSize: 12, 
+    fontWeight: 700, 
+    fontFamily: 'monospace', 
+    cursor: 'pointer', 
+    minWidth: 90, 
+    textAlign: 'center',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+    transition: 'all 0.1s ease',
+  },
+  btnAtajoCapturando: { 
+    background: 'linear-gradient(to bottom, var(--color-dorado), var(--color-dorado-suave))', 
+    border: '1px solid var(--color-dorado)', 
+    borderBottom: '3px solid var(--color-keycap-shadow-active)',
+    color: 'var(--color-fondo)', 
+    padding: '8px 16px', 
+    borderRadius: 6, 
+    fontSize: 12, 
+    fontWeight: 800, 
+    fontFamily: 'monospace', 
+    cursor: 'pointer', 
+    minWidth: 90, 
+    textAlign: 'center', 
+    boxShadow: '0 0 12px rgba(212,175,55,0.4), 0 2px 4px rgba(0,0,0,0.4)',
+    transition: 'all 0.1s ease',
+  },
 }

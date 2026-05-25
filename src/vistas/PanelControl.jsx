@@ -4,9 +4,9 @@ import { db } from '../servicios/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Play, Pause, SkipBack, SkipForward } from 'lucide-react'
 
-const ACCIONES_FILA_1 = ['Jab', 'Cross', 'Gancho', 'Uppercut']
-const ACCIONES_FILA_2 = ['Clinch', 'Golpe Conectado', 'Golpe Errado', 'Esquiva', 'Bloqueo', 'Finta', 'Pivoteo']
-const ESTADOS_FISICOS = ['Fatiga', 'Guardia Baja', 'Centro de Ring']
+const ACCIONES_FILA_1 = ['Jab', 'Recto', 'Cross', 'Gancho', 'Uppercut', 'Swing']
+const ACCIONES_FILA_2 = ['Finta', 'Esquiva', 'Bloqueo', 'Clinch', 'Pivoteo', 'Marca General']
+const ESTADOS_FISICOS = []
 
 export default function PanelControl() {
   const { id } = useParams()
@@ -19,6 +19,34 @@ export default function PanelControl() {
   const sendCmd = (cmd, payload) => {
     channel.postMessage({ cmd, payload })
   }
+
+  useEffect(() => {
+    // Notificar al editor que el panel remoto está abierto
+    sendCmd('panelReady')
+
+    const handleMessage = (e) => {
+      const { cmd, payload } = e.data || {}
+      if (cmd === 'stateUpdate') {
+        if (payload.isPlaying !== undefined) {
+          setIsPlaying(payload.isPlaying)
+        }
+        if (payload.esquinaDestino !== undefined) {
+          setEsquinaDestino(payload.esquinaDestino)
+        }
+      }
+    }
+    channel.addEventListener('message', handleMessage)
+    
+    const handleUnload = () => {
+      sendCmd('panelClosed')
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload)
+      channel.removeEventListener('message', handleMessage)
+      sendCmd('panelClosed')
+    }
+  }, [])
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying)
@@ -42,6 +70,7 @@ export default function PanelControl() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.repeat) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       
       const registrar = (tipo) => {
@@ -56,12 +85,17 @@ export default function PanelControl() {
         case hotkeys.RinconRojo: e.preventDefault(); handleSetEsquina('roja'); break;
         case hotkeys.RinconAzul: e.preventDefault(); handleSetEsquina('azul'); break;
         case hotkeys.Jab: registrar('Jab'); break;
+        case hotkeys.Recto: registrar('Recto'); break;
         case hotkeys.Cross: registrar('Cross'); break;
         case hotkeys.Gancho: registrar('Gancho'); break;
         case hotkeys.Uppercut: registrar('Uppercut'); break;
+        case hotkeys.Swing: registrar('Swing'); break;
+        case hotkeys.Finta: registrar('Finta'); break;
         case hotkeys.Esquiva: registrar('Esquiva'); break;
         case hotkeys.Bloqueo: registrar('Bloqueo'); break;
-        case hotkeys.Finta: registrar('Finta'); break;
+        case hotkeys.Clinch: registrar('Clinch'); break;
+        case hotkeys.Pivoteo: registrar('Pivoteo'); break;
+        case hotkeys["Marca General"]: registrar('Marca General'); break;
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -99,17 +133,12 @@ export default function PanelControl() {
         ))}
       </div>
 
+
       <div style={estilos.gridFila2}>
         {ACCIONES_FILA_2.map(act => (
           <button key={act} style={estilos.btnAccionSecundaria} onClick={() => sendCmd('registrarEvento', {tipo: act, esquina: esquinaDestino})}>
             {act} {hotkeys[act] && <span style={estilos.hotkeyHint}>[{formatearTecla(hotkeys[act])}]</span>}
           </button>
-        ))}
-      </div>
-
-      <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {ESTADOS_FISICOS.map(estado => (
-          <button key={estado} style={estilos.btnEstado} onClick={() => sendCmd('registrarEvento', {tipo: estado, esquina: 'general'})}>{estado}</button>
         ))}
       </div>
     </div>
@@ -126,9 +155,8 @@ const estilos = {
     color: activo === esquina ? (esquina === 'roja' ? 'var(--color-rojo-suave)' : 'var(--color-azul-suave)') : 'var(--color-texto-suave)',
   }),
   hotkeyHint: { opacity: 0.5, fontSize: 10, marginLeft: 4, fontWeight: 500 },
-  gridFila1: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 },
+  gridFila1: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 },
   gridFila2: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 },
   btnAccionPrincipal: (foco) => ({ background: 'var(--color-superficie)', border: `1px solid ${foco === 'roja' ? 'rgba(231,76,60,0.5)' : 'rgba(52,152,219,0.5)'}`, color: foco === 'roja' ? 'var(--color-rojo-suave)' : 'var(--color-azul-suave)', padding: '16px 0', borderRadius: 6, fontSize: 16, fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }),
   btnAccionSecundaria: { background: 'var(--color-superficie)', border: '1px solid var(--color-borde)', color: 'var(--color-texto)', padding: '12px 4px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase' },
-  btnEstado: { background: 'transparent', border: '1px dashed var(--color-texto-suave)', color: 'var(--color-texto-suave)', padding: '8px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer', textTransform: 'uppercase' },
 }

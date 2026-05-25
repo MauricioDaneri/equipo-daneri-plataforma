@@ -6,35 +6,60 @@
 import { calcularMetricas } from './matematicaTactica'
 
 export function clasificarPerfiles(eventos = [], esquina = 'roja') {
-  const filtrados = eventos.filter(e => e.esquina === esquina)
-
   // 1. Contar eventos por tipo
+  const GOLPES_OFENSIVOS = ['Jab', 'Recto', 'Cross', 'Gancho', 'Uppercut', 'Swing'];
   const counts = {
     Jab: 0,
+    Recto: 0,
     Cross: 0,
     Gancho: 0,
     Uppercut: 0,
+    Swing: 0,
+    Finta: 0,
     Esquiva: 0,
     Bloqueo: 0,
     Clinch: 0,
-    Finta: 0,
     Pivoteo: 0,
+    'Marca General': 0,
     Conectado: 0,
     Errado: 0
+  }
+
+  const filtrados = eventos.filter(e => e.esquina === esquina)
+
+  // Si no hay eventos para este boxeador, devolver todo en 0%
+  if (filtrados.length === 0) {
+    return {
+      estilista: 0,
+      fajador: 0,
+      slugger: 0,
+      counter: 0,
+      mixto: 0,
+      counts,
+      resumen: {
+        eficacia: 0,
+        rc: 0,
+        volumen: 0,
+        defensas: 0
+      }
+    }
   }
 
   filtrados.forEach(e => {
     if (counts[e.tipo] !== undefined) {
       counts[e.tipo]++
-    } else if (e.tipo === 'Golpe Conectado') {
+    }
+    
+    // Check if it's connected or missed
+    if (e.tipo === 'Golpe Conectado' || (GOLPES_OFENSIVOS.includes(e.tipo) && e.resultado !== 'Errado')) {
       counts.Conectado++
-    } else if (e.tipo === 'Golpe Errado') {
+    } else if (e.tipo === 'Golpe Errado' || (GOLPES_OFENSIVOS.includes(e.tipo) && e.resultado === 'Errado')) {
       counts.Errado++
     }
   })
 
-  // Golpes totales
-  const golpesDePoder = counts.Cross + counts.Gancho + counts.Uppercut
+  // Golpes de poder y totales
+  const golpesDePoder = counts.Cross + counts.Gancho + counts.Uppercut + counts.Recto + counts.Swing
   const golpesTotales = counts.Jab + golpesDePoder
   const defensasTotales = counts.Esquiva + counts.Bloqueo
   
@@ -79,7 +104,7 @@ export function clasificarPerfiles(eventos = [], esquina = 'roja') {
   }
 
   // 3. Pegador (Slugger)
-  // Golpes de poder (Cross, Hook, Upper) > 75%, baja movilidad
+  // Golpes de poder (Cross, Hook, Upper, Recto, Swing) > 75%, baja movilidad
   let slugger = 0
   if (golpesTotales > 0) {
     const pctPoder = (golpesDePoder / golpesTotales) * 100
@@ -125,6 +150,7 @@ export function clasificarPerfiles(eventos = [], esquina = 'roja') {
     slugger: Math.min(Math.max(slugger, 5), 100),
     counter: Math.min(Math.max(counter, 5), 100),
     mixto: Math.min(Math.max(mixto, 5), 100),
+    counts,
     resumen: {
       eficacia: Math.round(eficacia),
       rc: Math.round(rc),

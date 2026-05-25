@@ -71,4 +71,14 @@ describe('perfilesBoxeo.js — Algoritmos de Clasificación de Estilos de Boxeo'
     expect(perfiles.counter).toBeGreaterThan(perfiles.estilista)
     expect(perfiles.counter).toBeGreaterThanOrEqual(40)
   })
+
+  it('debe devolver 0% para todos los perfiles si la lista de eventos está vacía', () => {
+    const perfiles = clasificarPerfiles([], 'roja')
+    expect(perfiles.estilista).toBe(0)
+    expect(perfiles.fajador).toBe(0)
+    expect(perfiles.slugger).toBe(0)
+    expect(perfiles.counter).toBe(0)
+    expect(perfiles.mixto).toBe(0)
+  })
 })
+

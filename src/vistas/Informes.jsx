@@ -1,42 +1,65 @@
-import { useState, useRef } from 'react'
-import { FileText, Download, CheckCircle } from 'lucide-react'
-import InformeTemplate from '../components/pdf/InformeTemplate'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+import { useState, useMemo } from 'react'
+import { FileText, Search, Calendar, Award, Eye, Trash2, ArrowRight } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../servicios/db'
+import { useModal } from '../context/ModalContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function Informes() {
-  const [generando, setGenerando] = useState(false)
-  const templateRef = useRef(null)
+  const navigate = useNavigate()
+  const { mostrarConfirmacion } = useModal()
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('todo') // 'todo' | 'Sparring' | 'Guanteo' | 'Combate'
 
-  const generarPDF = async () => {
-    setGenerando(true)
-    try {
-      // Damos 500ms para asegurar que Recharts y las fuentes están renderizadas
-      await new Promise(resolve => setTimeout(resolve, 500))
+  const sessionsDb = useLiveQuery(() => db.sesiones.orderBy('fecha').reverse().toArray()) || []
+  const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray()) || []
+  const eventosDb = useLiveQuery(() => db.eventos.toArray()) || []
 
-      const pag1 = document.getElementById('pdf-pagina-1')
-      const pag2 = document.getElementById('pdf-pagina-2')
+  // Mapeo rápido de boxeadores para resolver nombres
+  const boxeadoresMap = useMemo(() => {
+    const map = {}
+    boxeadoresDb.forEach(b => {
+      map[b.id] = b
+    })
+    return map
+  }, [boxeadoresDb])
 
-      const canvas1 = await html2canvas(pag1, { scale: 2, useCORS: true })
-      const canvas2 = await html2canvas(pag2, { scale: 2, useCORS: true })
+  // Conteo de eventos por sesión
+  const eventosPorSesion = useMemo(() => {
+    const counts = {}
+    eventosDb.forEach(e => {
+      counts[e.sesionId] = (counts[e.sesionId] || 0) + 1
+    })
+    return counts
+  }, [eventosDb])
 
-      const img1 = canvas1.toDataURL('image/png')
-      const img2 = canvas2.toDataURL('image/png')
-
-      const pdf = new jsPDF('p', 'mm', 'a4')
+  // Filtrado y procesamiento
+  const sesionesFiltradas = useMemo(() => {
+    return sessionsDb.filter(s => {
+      const bRojo = boxeadoresMap[s.boxeadorRojoId]?.nombre || 'Rincón Rojo'
+      const bAzul = boxeadoresMap[s.boxeadorAzulId]?.nombre || 'Rincón Azul'
+      const matchSearch = `${bRojo} ${bAzul}`.toLowerCase().includes(busqueda.toLowerCase())
       
-      // A4 es 210x297mm
-      pdf.addImage(img1, 'PNG', 0, 0, 210, 297)
-      pdf.addPage()
-      pdf.addImage(img2, 'PNG', 0, 0, 210, 297)
+      const tipoPelea = s.tipo || 'Sparring' // Por defecto
+      const matchTipo = filtroTipo === 'todo' || tipoPelea.toLowerCase() === filtroTipo.toLowerCase()
 
-      pdf.save('Informe_Daneri_JuanPerez_12-05-2026.pdf')
+      return matchSearch && matchTipo
+    })
+  }, [sessionsDb, boxeadoresMap, busqueda, filtroTipo])
 
-    } catch (error) {
-      console.error("Error generando PDF:", error)
-      alert("Hubo un problema al generar el PDF.")
-    } finally {
-      setGenerando(false)
+  const eliminarSesion = async (id, e) => {
+    e.stopPropagation()
+    const confirmado = await mostrarConfirmacion({ titulo: "Eliminar Informe", mensaje: "¿Estás seguro de eliminar este informe y todo su registro de eventos?\nEsta acción no se puede deshacer.", textoConfirmar: "Eliminar", tipo: "peligro" });
+    if (confirmado) {
+      try {
+        await db.transaction('rw', [db.sesiones, db.eventos, db.anotaciones], async () => {
+          await db.sesiones.delete(id)
+          await db.eventos.where('sesionId').equals(id).delete()
+          await db.anotaciones.where('sesionId').equals(id).delete()
+        })
+      } catch (err) {
+        console.error("Error al eliminar sesión:", err)
+      }
     }
   }
 
@@ -44,70 +67,121 @@ export default function Informes() {
     <div style={estilos.pagina}>
       <header style={estilos.header}>
         <div>
-          <h1 style={estilos.tituloSeccion}>INFORMES Y DOSSIER</h1>
+          <h1 style={estilos.tituloSeccion}>DOSSIERS E INFORMES TÁCTICOS</h1>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--color-texto-suave)' }}>
-            Generación de documentación oficial en alta calidad.
+            Generación automática de documentación técnica basada en eventos reales e IndexedDB.
           </p>
         </div>
       </header>
 
-      <div style={estilos.grid}>
-        
-        {/* Generador Manual */}
-        <div className="tarjeta" style={estilos.tarjeta}>
-          <div style={estilos.iconoContainer}>
-            <FileText size={32} color="var(--color-dorado)" />
-          </div>
-          <h2 style={{ fontSize: 16, margin: '0 0 8px 0', color: 'var(--color-texto)' }}>Generar Informe Técnico</h2>
-          <p style={{ fontSize: 13, color: 'var(--color-texto-suave)', marginBottom: 24, flex: 1 }}>
-            Exporta el análisis completo de una sesión (2 páginas) con gráficos vectoriales y el branding oficial del Equipo Daneri.
+      {/* Barra de Filtros */}
+      <div style={estilos.filterBar}>
+        <div style={estilos.searchContainer}>
+          <Search size={16} color="var(--color-texto-suave)" style={{ marginLeft: 14 }} />
+          <input 
+            type="text" 
+            placeholder="Buscar por boxeador..." 
+            style={estilos.searchInput}
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </div>
+        <select 
+          value={filtroTipo} 
+          onChange={e => setFiltroTipo(e.target.value)}
+          style={estilos.selectInput}
+        >
+          <option value="todo">Todos los tipos</option>
+          <option value="sparring">Sparring</option>
+          <option value="guanteo">Guanteo</option>
+          <option value="combate">Combate</option>
+        </select>
+      </div>
+
+      {/* Listado de Sesiones / Informes */}
+      {sesionesFiltradas.length === 0 ? (
+        <div style={estilos.emptyState}>
+          <FileText size={48} color="var(--color-texto-muted)" style={{ marginBottom: 16 }} />
+          <h3 style={{ fontSize: 16, color: 'var(--color-texto)', marginBottom: 8 }}>Sin Informes Disponibles</h3>
+          <p style={{ fontSize: 13, color: 'var(--color-texto-suave)', maxWidth: 400, margin: '0 auto 24px auto', lineHeight: 1.5 }}>
+            No encontramos sesiones de análisis guardadas. Grabá y etiquetá eventos en el Editor Táctico para generar dossiers dinámicos.
           </p>
-          
           <button 
             className="boton-primario" 
-            onClick={generarPDF}
-            disabled={generando}
-            style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: 8 }}
+            onClick={() => navigate('/sesiones')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
           >
-            {generando ? (
-              'Renderizando PDF...'
-            ) : (
-              <><Download size={18} /> Descargar Archivo PDF</>
-            )}
+            Ir a Sesiones <ArrowRight size={16} />
           </button>
         </div>
+      ) : (
+        <div style={estilos.grid}>
+          {sesionesFiltradas.map(s => {
+            const bRojo = boxeadoresMap[s.boxeadorRojoId]
+            const bAzul = boxeadoresMap[s.boxeadorAzulId]
+            const totalEventos = eventosPorSesion[s.id] || 0
+            
+            return (
+              <div 
+                key={s.id} 
+                className="tarjeta"
+                style={estilos.tarjeta}
+                onClick={() => navigate(`/informe/${s.id}`)}
+              >
+                {/* Botón de borrar flotante */}
+                <button
+                  onClick={(e) => eliminarSesion(s.id, e)}
+                  style={estilos.btnEliminar}
+                  title="Eliminar sesión de análisis"
+                >
+                  <Trash2 size={14} />
+                </button>
 
-        {/* Info lateral */}
-        <div className="tarjeta" style={{ ...estilos.tarjeta, background: 'transparent', border: '1px dashed var(--color-borde)' }}>
-          <h3 style={{ fontSize: 14, color: 'var(--color-texto)', textTransform: 'uppercase', marginBottom: 16 }}>Características del Informe</h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={estilos.featureItem}>
-              <CheckCircle size={16} color="var(--color-dorado)" />
-              <span>Gráficos de radar y distribución de golpes de <strong>Recharts</strong> renderizados en alta resolución.</span>
-            </div>
-            <div style={estilos.featureItem}>
-              <CheckCircle size={16} color="var(--color-dorado)" />
-              <span>Dossier táctico pre-poblado por <strong>Ollama</strong> (si está activo).</span>
-            </div>
-            <div style={estilos.featureItem}>
-              <CheckCircle size={16} color="var(--color-dorado)" />
-              <span>Generación ofuscada off-screen con <strong>html2canvas</strong> para no interferir con la UI oscura del analista.</span>
-            </div>
-            <div style={estilos.featureItem}>
-              <CheckCircle size={16} color="var(--color-dorado)" />
-              <span>Diseño A4 imprimible con fondo blanco y estética premium.</span>
-            </div>
-          </div>
+                <div style={estilos.boxerContainer}>
+                  <div style={estilos.boxerRow}>
+                    <div style={estilos.esquinaDot('var(--color-rojo-suave)')} />
+                    <span>{bRojo?.nombre || 'Rincón Rojo'}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--color-texto-muted)', paddingLeft: 16, fontWeight: 700 }}>VS</div>
+                  <div style={estilos.boxerRow}>
+                    <div style={estilos.esquinaDot('var(--color-azul-suave)')} />
+                    <span>{bAzul?.nombre || 'Rincón Azul'}</span>
+                  </div>
+                </div>
+
+                <div style={estilos.metaContainer}>
+                  <div style={estilos.metaItem}>
+                    <span>Fecha</span>
+                    <strong style={{ color: 'var(--color-texto)' }}>{s.fecha}</strong>
+                  </div>
+                  <div style={estilos.metaItem}>
+                    <span>Rounds Analizados</span>
+                    <strong style={{ color: 'var(--color-texto)' }}>{s.rounds || 0}</strong>
+                  </div>
+                  <div style={estilos.metaItem}>
+                    <span>Acciones Registradas</span>
+                    <strong style={{ color: 'var(--color-dorado)' }}>{totalEventos}</strong>
+                  </div>
+                  <div style={estilos.metaItem}>
+                    <span>Tipo</span>
+                    <strong style={{ color: 'var(--color-texto-suave)', textTransform: 'uppercase', fontSize: 10 }}>{s.tipo || 'Sparring'}</strong>
+                  </div>
+                </div>
+
+                <button 
+                  style={estilos.btnVer}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/informe/${s.id}`)
+                  }}
+                >
+                  <Eye size={14} /> Inspeccionar Dossier
+                </button>
+              </div>
+            )
+          })}
         </div>
-
-      </div>
-
-      {/* COMPONENTE OCULTO PARA EL PDF */}
-      <div style={{ position: 'absolute', top: -9999, left: -9999, width: 800 }}>
-        <InformeTemplate ref={templateRef} />
-      </div>
-
+      )}
     </div>
   )
 }
@@ -118,10 +192,11 @@ const estilos = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    position: 'relative',
+    overflowY: 'auto',
+    gap: 24,
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 8,
   },
   tituloSeccion: {
     fontSize: 20,
@@ -130,33 +205,138 @@ const estilos = {
     letterSpacing: '-0.02em',
     margin: '0 0 4px 0',
   },
+  filterBar: {
+    display: 'flex',
+    gap: 16,
+    alignItems: 'center',
+    background: 'var(--color-superficie)',
+    padding: '12px 16px',
+    borderRadius: 12,
+    border: '1px solid var(--color-borde)',
+  },
+  searchContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    background: 'var(--color-superficie-2)',
+    borderRadius: 8,
+    border: '1px solid var(--color-borde)',
+    flex: 1,
+  },
+  searchInput: {
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--color-texto)',
+    padding: '10px 14px',
+    outline: 'none',
+    fontSize: 13,
+  },
+  selectInput: {
+    background: 'var(--color-superficie-2)',
+    border: '1px solid var(--color-borde)',
+    color: 'var(--color-texto)',
+    borderRadius: 8,
+    padding: '10px 14px',
+    outline: 'none',
+    fontSize: 13,
+    cursor: 'pointer',
+    minWidth: 160,
+  },
   grid: {
     display: 'grid',
-    gridTemplateColumns: '400px 1fr',
-    gap: 32,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: 24,
+    paddingBottom: 40,
   },
   tarjeta: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start',
-    padding: 32,
+    padding: 24,
+    background: 'linear-gradient(135deg, var(--color-superficie), rgba(30,30,30,0.5))',
+    borderRadius: 12,
+    border: '1px solid var(--color-borde)',
+    borderLeft: '4px solid var(--color-dorado)',
+    transition: 'all 0.2s ease',
+    cursor: 'pointer',
+    position: 'relative',
+    gap: 14,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
   },
-  iconoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    background: 'rgba(212,175,55,0.1)',
+  boxerContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  boxerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    fontSize: 15,
+    fontWeight: 700,
+    color: 'var(--color-texto)',
+  },
+  esquinaDot: (color) => ({
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    background: color,
+  }),
+  metaContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 8,
+    borderTop: '1px solid var(--color-borde)',
+    paddingTop: 12,
+  },
+  metaItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: 12,
+    color: 'var(--color-texto-suave)',
+  },
+  btnVer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    gap: 8,
+    padding: '10px',
+    borderRadius: 8,
+    background: 'var(--color-dorado-alfa)',
+    border: 'none',
+    color: 'var(--color-dorado-suave)',
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'background 0.2s',
+    marginTop: 6,
+    width: '100%',
   },
-  featureItem: {
+  btnEliminar: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: 'none',
+    color: 'var(--color-texto-muted)',
+    borderRadius: 6,
+    padding: 6,
+    cursor: 'pointer',
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: 12,
-    fontSize: 13,
-    color: 'var(--color-texto-suave)',
-    lineHeight: '1.5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
+    zIndex: 10,
+  },
+  emptyState: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    padding: '80px 24px',
+    background: 'var(--color-superficie)',
+    borderRadius: 12,
+    border: '1px dashed var(--color-borde)',
+    margin: '20px 0',
   }
 }

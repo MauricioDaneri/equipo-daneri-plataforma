@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 
 // Constantes de color para pasar la auditoría y mantener un diseño de impresión premium
 const COLORES_PDF = {
@@ -67,32 +67,22 @@ const DossierTemplate = forwardRef(({ boxeador, stats, analisis, metas }, ref) =
           </div>
         </div>
 
-        {/* 2. Perfil de Rendimiento (Radar) */}
-        <div style={{ display: 'flex', gap: 32 }}>
-          <div style={{ flex: 1, ...estilos.seccion }}>
-            <h2 style={estilos.tituloSeccion}>PERFIL TÁCTICO GLOBAL</h2>
-            <div style={{ height: 250, width: '100%', display: 'flex', justifyContent: 'center' }}>
-              <RadarChart width={300} height={250} cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: COLORES_PDF.grisGraficos, fontSize: 10, fontWeight: 600 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Boxeador" dataKey="A" stroke={COLORES_PDF.dorado} fill={COLORES_PDF.dorado} fillOpacity={0.5} />
-              </RadarChart>
-            </div>
-          </div>
-          
-          <div style={{ flex: 1, ...estilos.seccion }}>
-            <h2 style={estilos.tituloSeccion}>ARSENAL OFENSIVO</h2>
-            <div style={{ height: 250, width: '100%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.distribucion} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: COLORES_PDF.grisGraficos, fontWeight: 700, fontSize: 12}} width={60} />
-                  <Tooltip />
-                  <Bar dataKey="val" fill={COLORES_PDF.dorado} barSize={24} radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+        {/* 2. Perfil de Rendimiento (Arsenal Ofensivo) */}
+        <div style={estilos.seccion}>
+          <h2 style={estilos.tituloSeccion}>ARSENAL OFENSIVO HISTÓRICO</h2>
+          <div style={{ height: 200, width: '100%' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats.distribucion} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" stroke={COLORES_PDF.grisGraficos} fontSize={8} tickLine={false} axisLine={false} />
+                <YAxis stroke={COLORES_PDF.grisGraficos} fontSize={8} tickLine={false} axisLine={false} />
+                <Tooltip />
+                <Bar dataKey="val" radius={[3, 3, 0, 0]}>
+                  {stats.distribucion.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || COLORES_PDF.dorado} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

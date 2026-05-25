@@ -1,23 +1,129 @@
-import { useState, useMemo } from 'react'
-import { Search, Eye, Play, Plus, MonitorPlay, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Activity } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Search, Eye, Play, Plus, MonitorPlay, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, Activity, Users, Trash2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../servicios/db'
 import PanelAnalisis from '../components/ui/PanelAnalisis'
+import ModalNuevaSesion from '../components/ui/ModalNuevaSesion'
+import ModalConfirmacion from '../components/ui/ModalConfirmacion'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function Sesiones() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [vistaActiva, setVistaActiva] = useState('calendario') // 'calendario' | 'lista' | 'comparativa'
   const [panelAbierto, setPanelAbierto] = useState(false)
+  const [modalNuevaSesionAbierto, setModalNuevaSesionAbierto] = useState(false)
   const [sesionSeleccionada, setSesionSeleccionada] = useState(null)
+  const [sesionAEliminar, setSesionAEliminar] = useState(null)
   
   const [fechaCalendario, setFechaCalendario] = useState(new Date())
   const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date().toISOString().split('T')[0])
   const [busqueda, setBusqueda] = useState('')
 
+  const [boxeadorAId, setBoxeadorAId] = useState('')
+  const [boxeadorBId, setBoxeadorBId] = useState('')
+
+  useEffect(() => {
+    if (location.state?.vista) {
+      setVistaActiva(location.state.vista)
+    }
+    if (location.state?.sesionId) {
+      abrirPanel(location.state.sesionId)
+    }
+    if (location.state) {
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location.state])
+
   const sesionesRaw = useLiveQuery(() => db.sesiones.toArray()) || []
   const boxeadores = useLiveQuery(() => db.boxeadores.toArray()) || []
+  const eventosDb = useLiveQuery(() => db.eventos.toArray()) || []
+
+  useEffect(() => {
+    if (boxeadores.length > 0) {
+      const activos = boxeadores.filter(b => !b.archivado)
+      if (activos.length > 0) {
+        if (!boxeadorAId) setBoxeadorAId(activos[0].id.toString())
+        if (!boxeadorBId) setBoxeadorBId((activos[1] || activos[0]).id.toString())
+      }
+    }
+  }, [boxeadores])
+
+  // Lógica Comparativa Dual Real
+  const statsComparativas = useMemo(() => {
+    if (!boxeadorAId || !boxeadorBId) return null
+
+    const calculateBoxerStats = (boxerId) => {
+      const susSesiones = sesionesRaw.filter(s => s.boxeadorRojoId === boxerId || s.boxeadorAzulId === boxerId)
+      const numSesiones = susSesiones.length
+
+      let conectados = 0
+      let errados = 0
+      let jabs = 0
+      let crosses = 0
+      let ganchos = 0
+      let uppercuts = 0
+      let esquivas = 0
+      let bloqueos = 0
+      let fintas = 0
+      let pivoteos = 0
+
+      susSesiones.forEach(s => {
+        const miEsquina = s.boxeadorRojoId === boxerId ? 'roja' : 'azul'
+        const misEventos = eventosDb.filter(e => e.sesionId === s.id && e.esquina === miEsquina)
+
+        misEventos.forEach(e => {
+          if (e.tipo === 'Golpe Conectado') conectados++
+          if (e.tipo === 'Golpe Errado') errados++
+          if (e.tipo === 'Jab') jabs++
+          if (e.tipo === 'Cross') crosses++
+          if (e.tipo === 'Gancho') ganchos++
+          if (e.tipo === 'Uppercut') uppercuts++
+          if (e.tipo === 'Esquiva') esquivas++
+          if (e.tipo === 'Bloqueo') bloqueos++
+          if (e.tipo === 'Finta') fintas++
+          if (e.tipo === 'Pivoteo') pivoteos++
+        })
+      })
+
+      const totalPunches = conectados + errados
+      const precision = totalPunches > 0 ? Math.round((conectados / totalPunches) * 100) : 0
+      const volumeScore = numSesiones > 0 ? Math.min(100, Math.round((totalPunches / numSesiones) * 0.8)) : 0
+      const defense = numSesiones > 0 ? Math.min(100, Math.round(((bloqueos + esquivas) / numSesiones) * 3)) : 0
+      
+      const punchTypes = [jabs, crosses, ganchos, uppercuts].filter(c => c > 0).length
+      const variety = punchTypes * 25
+
+      const movement = numSesiones > 0 ? Math.min(100, Math.round(((pivoteos + fintas) / numSesiones) * 5)) : 0
+
+      return {
+        nombre: boxeadores.find(b => b.id === boxerId)?.nombre || 'Desconocido',
+        precision,
+        volume: numSesiones > 0 ? Math.round(totalPunches / numSesiones) : 0,
+        volumeScore,
+        defense,
+        variety,
+        movement,
+        numSesiones,
+        conectados,
+        totalPunches
+      }
+    }
+
+    const statsA = calculateBoxerStats(Number(boxeadorAId))
+    const statsB = calculateBoxerStats(Number(boxeadorBId))
+
+    const radarData = [
+      { subject: 'Precisión %', A: statsA.precision, B: statsB.precision, fullMark: 100 },
+      { subject: 'Volumen', A: statsA.volumeScore, B: statsB.volumeScore, fullMark: 100 },
+      { subject: 'Defensa %', A: statsA.defense, B: statsB.defense, fullMark: 100 },
+      { subject: 'Variedad Táctica', A: statsA.variety, B: statsB.variety, fullMark: 100 },
+      { subject: 'Movilidad', A: statsA.movement, B: statsB.movement, fullMark: 100 }
+    ]
+
+    return { statsA, statsB, radarData }
+  }, [boxeadorAId, boxeadorBId, sesionesRaw, eventosDb, boxeadores])
 
   const sesionesDb = useMemo(() => {
     return sesionesRaw.map(s => {
@@ -46,7 +152,16 @@ export default function Sesiones() {
     for(let i = 1; i <= diasEnMes; i++) {
        const d = new Date(year, month, i)
        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-       const sesionesDia = sesionesDb.filter(s => s.fecha === dateStr)
+       const sesionesDia = sesionesDb.filter(s => {
+          let sFecha = s.fecha || '';
+          if (sFecha.includes('/')) {
+            const partes = sFecha.split('/');
+            if (partes.length === 3) {
+              sFecha = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+            }
+          }
+          return sFecha === dateStr;
+        })
        dias.push({ fecha: d, dateStr, sesiones: sesionesDia })
     }
     return dias
@@ -57,12 +172,51 @@ export default function Sesiones() {
   const prevMes = () => setFechaCalendario(new Date(fechaCalendario.getFullYear(), fechaCalendario.getMonth() - 1, 1))
   const nextMes = () => setFechaCalendario(new Date(fechaCalendario.getFullYear(), fechaCalendario.getMonth() + 1, 1))
 
-  const sesionesDelDia = sesionesDb.filter(s => s.fecha === fechaSeleccionada && (s.boxA.toLowerCase().includes(busqueda.toLowerCase()) || s.boxB.toLowerCase().includes(busqueda.toLowerCase()) || s.tipo.toLowerCase().includes(busqueda.toLowerCase())))
-  const sesionesLista = sesionesDb.filter(s => s.boxA.toLowerCase().includes(busqueda.toLowerCase()) || s.boxB.toLowerCase().includes(busqueda.toLowerCase()) || s.fecha.includes(busqueda))
+  const sesionesDelDia = sesionesDb.filter(s => {
+    let sFecha = s.fecha || '';
+    if (sFecha.includes('/')) {
+      const partes = sFecha.split('/');
+      if (partes.length === 3) {
+        sFecha = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+      }
+    }
+    return sFecha === fechaSeleccionada && 
+    (
+      (s.boxA || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+      (s.boxB || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+      (s.tipo || '').toLowerCase().includes(busqueda.toLowerCase())
+    )
+  })
+  
+  const sesionesLista = sesionesDb.filter(s => 
+    (s.boxA || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+    (s.boxB || '').toLowerCase().includes(busqueda.toLowerCase()) || 
+    (s.fecha || '').includes(busqueda)
+  )
 
   const abrirPanel = (id) => {
     setSesionSeleccionada(id)
     setPanelAbierto(true)
+  }
+
+  const eliminarSesion = async (id) => {
+    setSesionAEliminar(id)
+  }
+
+  const confirmarEliminacion = async () => {
+    if (!sesionAEliminar) return
+    try {
+      await db.sesiones.delete(sesionAEliminar)
+      const eventosToDelete = await db.eventos.where('sesionId').equals(sesionAEliminar).toArray()
+      if (eventosToDelete.length > 0) {
+        const ids = eventosToDelete.map(e => e.id)
+        await db.eventos.bulkDelete(ids)
+      }
+    } catch (error) {
+      console.error('Error eliminando sesión:', error)
+    } finally {
+      setSesionAEliminar(null)
+    }
   }
 
   return (
@@ -78,7 +232,7 @@ export default function Sesiones() {
               <Search size={18} color="var(--color-texto-suave)" />
               <input type="text" placeholder="Búsqueda profunda..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={estilos.inputBusqueda} />
             </div>
-            <button className="boton-primario" style={{ fontSize: 13, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="boton-primario" onClick={() => setModalNuevaSesionAbierto(true)} style={{ fontSize: 13, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Plus size={16} /> Nueva Sesión
             </button>
           </div>
@@ -133,7 +287,7 @@ export default function Sesiones() {
                       {hasSessions && (
                         <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
                           {dia.sesiones.map(s => (
-                            <div key={s.id} style={{ width: 8, height: 8, borderRadius: '50%', background: s.tipo.includes('Sparring') ? 'var(--color-rojo-suave)' : 'var(--color-azul-suave)' }} title={s.tipo} />
+                            <div key={s.id} style={{ width: 8, height: 8, borderRadius: '50%', background: (s.tipo || '').includes('Sparring') ? 'var(--color-rojo-suave)' : 'var(--color-azul-suave)' }} title={s.tipo || 'Sin tipo'} />
                           ))}
                         </div>
                       )}
@@ -173,6 +327,7 @@ export default function Sesiones() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => abrirPanel(s.id)} style={{...estilos.btnMiniAccion, flex: 1}}><Eye size={14}/> Análisis</button>
                         <button onClick={() => navigate(`/editor/${s.id}`)} style={{...estilos.btnMiniAccion, flex: 1, color: 'var(--color-dorado)'}}><Play size={14}/> Táctico</button>
+                        <button onClick={() => eliminarSesion(s.id)} style={{...estilos.btnMiniAccion, flex: '0 0 auto', color: 'var(--color-rojo-suave)'}} title="Eliminar"><Trash2 size={14}/></button>
                       </div>
                     </div>
                   ))}
@@ -207,6 +362,7 @@ export default function Sesiones() {
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => abrirPanel(s.id)} style={estilos.btnAccionList} title="Ver Análisis"><Eye size={16} /></button>
                         <button onClick={() => navigate(`/editor/${s.id}`)} style={{...estilos.btnAccionList, color: 'var(--color-dorado)'}} title="Editor Táctico"><Play size={16} /></button>
+                        <button onClick={() => eliminarSesion(s.id)} style={{...estilos.btnAccionList, color: 'var(--color-rojo-suave)'}} title="Eliminar"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -218,28 +374,146 @@ export default function Sesiones() {
 
         {/* VISTA COMPARATIVA */}
         {vistaActiva === 'comparativa' && (
-          <div className="tarjeta" style={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-texto-suave)' }}>
-            <div style={{ textAlign: 'center' }}>
-              <RadarChart width={400} height={400} cx="50%" cy="50%" outerRadius="70%" data={[
-                { subject: 'Velocidad', A: 80, B: 60, fullMark: 100 },
-                { subject: 'Potencia', A: 90, B: 85, fullMark: 100 },
-                { subject: 'Precisión', A: 70, B: 90, fullMark: 100 },
-                { subject: 'Defensa', A: 60, B: 75, fullMark: 100 },
-                { subject: 'Resistencia', A: 85, B: 70, fullMark: 100 }
-              ]}>
-                <PolarGrid stroke="var(--color-borde)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--color-texto)', fontSize: 13 }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Boxeador A" dataKey="A" stroke="var(--color-rojo)" fill="var(--color-rojo)" fillOpacity={0.4} />
-                <Radar name="Boxeador B" dataKey="B" stroke="var(--color-azul)" fill="var(--color-azul)" fillOpacity={0.4} />
-              </RadarChart>
-              <p style={{ marginTop: 20 }}>Comparativa Simulada: Funcionalidad en desarrollo para comparar cualquier par de boxeadores del roster.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, height: 'calc(100% - 130px)' }}>
+            <div className="tarjeta" style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: 24, justifyContent: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 16, color: 'var(--color-dorado)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Selección de Atletas
+              </h2>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, color: 'var(--color-texto-suave)', fontWeight: 600 }}>BOXEADOR ROJO (A)</label>
+                  <select 
+                    value={boxeadorAId} 
+                    onChange={e => setBoxeadorAId(e.target.value)} 
+                    style={{
+                      background: 'var(--color-superficie-2)',
+                      border: '1px solid var(--color-borde)',
+                      borderLeft: '4px solid var(--color-rojo-suave)',
+                      color: 'var(--color-texto)',
+                      padding: 10,
+                      borderRadius: 6,
+                      outline: 'none',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {boxeadores.filter(b => !b.archivado).map(b => (
+                      <option key={b.id} value={b.id}>{b.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, color: 'var(--color-texto-suave)', fontWeight: 600 }}>BOXEADOR AZUL (B)</label>
+                  <select 
+                    value={boxeadorBId} 
+                    onChange={e => setBoxeadorBId(e.target.value)} 
+                    style={{
+                      background: 'var(--color-superficie-2)',
+                      border: '1px solid var(--color-borde)',
+                      borderLeft: '4px solid var(--color-azul-suave)',
+                      color: 'var(--color-texto)',
+                      padding: 10,
+                      borderRadius: 6,
+                      outline: 'none',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    {boxeadores.filter(b => !b.archivado).map(b => (
+                      <option key={b.id} value={b.id}>{b.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {statsComparativas && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ borderBottom: '1px solid var(--color-borde)', paddingBottom: 10 }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-texto-suave)', fontWeight: 500 }}>SESIONES COMPARADAS</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-rojo-suave)' }}>{statsComparativas.statsA.nombre}: {statsComparativas.statsA.numSesiones}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-azul-suave)' }}>{statsComparativas.statsB.nombre}: {statsComparativas.statsB.numSesiones}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--color-texto-suave)', fontWeight: 500, marginBottom: 6 }}>PRECISIÓN DE GOLPEO</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 12, color: 'var(--color-rojo-suave)', fontWeight: 700, width: 35, textAlign: 'right' }}>{statsComparativas.statsA.precision}%</span>
+                      <div style={{ flex: 1, height: 6, background: 'var(--color-borde)', borderRadius: 3, display: 'flex', overflow: 'hidden' }}>
+                        <div style={{ width: `${statsComparativas.statsA.precision}%`, background: 'var(--color-rojo-suave)' }} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--color-azul-suave)', fontWeight: 700, width: 35, textAlign: 'right' }}>{statsComparativas.statsB.precision}%</span>
+                      <div style={{ flex: 1, height: 6, background: 'var(--color-borde)', borderRadius: 3, display: 'flex', overflow: 'hidden' }}>
+                        <div style={{ width: `${statsComparativas.statsB.precision}%`, background: 'var(--color-azul-suave)' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--color-texto-suave)', fontWeight: 500, marginBottom: 6 }}>VOLUMEN PROMEDIO DE GOLPES</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                      <span style={{ color: 'var(--color-rojo-suave)' }}>{statsComparativas.statsA.volume} golpes/pelea</span>
+                      <span style={{ color: 'var(--color-azul-suave)' }}>{statsComparativas.statsB.volume} golpes/pelea</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="tarjeta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+              {statsComparativas ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <h3 style={{ fontSize: 14, color: 'var(--color-texto-suave)', marginBottom: 10, textTransform: 'uppercase' }}>Comparativa de Rendimiento</h3>
+                  <div style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="75%" data={statsComparativas.radarData}>
+                        <PolarGrid stroke="var(--color-borde)" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--color-texto)', fontSize: 11 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar name={statsComparativas.statsA.nombre} dataKey="A" stroke="var(--color-rojo-suave)" fill="var(--color-rojo-suave)" fillOpacity={0.25} />
+                        <Radar name={statsComparativas.statsB.nombre} dataKey="B" stroke="var(--color-azul-suave)" fill="var(--color-azul-suave)" fillOpacity={0.25} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{ display: 'flex', gap: 24, marginTop: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--color-rojo-suave)' }} />
+                      <span style={{ fontSize: 12, color: 'var(--color-texto)' }}>{statsComparativas.statsA.nombre}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 12, height: 12, borderRadius: 3, background: 'var(--color-azul-suave)' }} />
+                      <span style={{ fontSize: 12, color: 'var(--color-texto)' }}>{statsComparativas.statsB.nombre}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--color-texto-suave)' }}>Por favor selecciona boxeadores para comparar.</div>
+              )}
             </div>
           </div>
         )}
       </div>
 
       {panelAbierto && <PanelAnalisis isOpen={panelAbierto} onClose={() => setPanelAbierto(false)} sesionId={sesionSeleccionada} />}
+      <ModalNuevaSesion 
+        isOpen={modalNuevaSesionAbierto} 
+        onClose={() => setModalNuevaSesionAbierto(false)} 
+        onCreated={(newId) => {
+          navigate(`/editor/${newId}`)
+        }}
+      />
+      <ModalConfirmacion 
+        isOpen={!!sesionAEliminar}
+        titulo="Eliminar Sesión"
+        mensaje="¿Estás seguro de que querés eliminar esta sesión permanentemente? Se borrarán también todos los eventos tácticos registrados."
+        textoConfirmar="Eliminar"
+        tipo="peligro"
+        onConfirm={confirmarEliminacion}
+        onCancel={() => setSesionAEliminar(null)}
+      />
     </div>
   )
 }

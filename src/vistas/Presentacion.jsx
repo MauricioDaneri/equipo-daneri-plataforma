@@ -75,6 +75,15 @@ export default function Presentacion() {
     if (!canvasRef.current || !wrapperRef.current) return
 
     let canvas = null;
+    const handleResize = () => {
+      if (wrapperRef.current && canvas) {
+        const rect = wrapperRef.current.getBoundingClientRect()
+        canvas.setWidth(rect.width)
+        canvas.setHeight(rect.height)
+        canvas.renderAll()
+      }
+    }
+
     const initCanvas = () => {
       if (!wrapperRef.current) return
       const { width, height } = wrapperRef.current.getBoundingClientRect()
@@ -87,18 +96,12 @@ export default function Presentacion() {
       canvas.freeDrawingBrush.width = 4
       setCanvasInstance(canvas)
 
-      window.addEventListener('resize', () => {
-        if (wrapperRef.current && canvas) {
-          const rect = wrapperRef.current.getBoundingClientRect()
-          canvas.setWidth(rect.width)
-          canvas.setHeight(rect.height)
-          canvas.renderAll()
-        }
-      })
+      window.addEventListener('resize', handleResize)
     }
     const timeout = setTimeout(initCanvas, 100)
     return () => {
       clearTimeout(timeout)
+      window.removeEventListener('resize', handleResize)
       try { canvas && canvas.dispose() } catch(e) {}
     }
   }, [])

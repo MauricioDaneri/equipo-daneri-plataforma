@@ -47,22 +47,27 @@ export default function ModalBoxeador({ isOpen, onClose, boxeador = null }) {
     e.preventDefault()
     if (!nombre) return
 
-    const data = {
-      nombre,
-      apodo,
-      categoriaPeso,
-      estancia,
-      foto,
-      notas,
-      createdAt: boxeador?.createdAt || Date.now()
-    }
+    try {
+      const data = {
+        nombre,
+        apodo,
+        categoriaPeso,
+        estancia,
+        foto,
+        notas,
+        createdAt: boxeador?.createdAt || Date.now()
+      }
 
-    if (boxeador?.id) {
-      await db.boxeadores.update(boxeador.id, data)
-    } else {
-      await db.boxeadores.add(data)
+      if (boxeador?.id) {
+        await db.boxeadores.update(boxeador.id, data)
+      } else {
+        await db.boxeadores.add(data)
+      }
+      onClose()
+    } catch (err) {
+      console.error('[ModalBoxeador] Error al guardar boxeador:', err)
+      alert('Error al guardar el boxeador: ' + err.message)
     }
-    onClose()
   }
 
   return (
@@ -120,14 +125,15 @@ export default function ModalBoxeador({ isOpen, onClose, boxeador = null }) {
             <div style={estilos.campo}>
               <label style={estilos.label}>Categoría de Peso</label>
               <select value={categoriaPeso} onChange={e => setCategoriaPeso(e.target.value)} style={estilos.select}>
-                {CATEGORIAS_PESO.map(c => <option key={c} value={c}>{c}</option>)}
+                {CATEGORIAS_PESO.map(c => <option key={c} value={c} style={{ background: '#1a1a1f', color: '#e0e0e0' }}>{c}</option>)}
               </select>
             </div>
             <div style={estilos.campo}>
-              <label style={estilos.label}>Estancia</label>
+              <label style={estilos.label}>Guardia (Estancia)</label>
               <select value={estancia} onChange={e => setEstancia(e.target.value)} style={estilos.select}>
-                <option value="Ortodoxa">Ortodoxa</option>
-                <option value="Zurdo">Zurdo</option>
+                <option value="Ortodoxa" style={{ background: '#1a1a1f', color: '#e0e0e0' }}>Ortodoxa (Diestro)</option>
+                <option value="Zurdo" style={{ background: '#1a1a1f', color: '#e0e0e0' }}>Zurdo (Southpaw)</option>
+                <option value="Ambidiestro" style={{ background: '#1a1a1f', color: '#e0e0e0' }}>Ambidiestro</option>
               </select>
             </div>
           </div>

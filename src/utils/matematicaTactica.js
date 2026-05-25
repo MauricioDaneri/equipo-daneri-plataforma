@@ -10,7 +10,7 @@ export const calcularMetricas = (eventos, esquina) => {
   // Definición: % de golpes que impactan (suponemos que en el editor el analista solo marca impactos, 
   // pero para el modelo táctico diferenciamos lanzados de conectados si existieran).
   // En la versión actual, calculamos volumen relativo.
-  const golpes = filtrados.filter(e => ['Jab', 'Cross', 'Gancho', 'Uppercut'].includes(e.tipo)).length;
+  const golpes = filtrados.filter(e => ['Jab', 'Recto', 'Cross', 'Gancho', 'Uppercut', 'Swing'].includes(e.tipo)).length;
   const defensas = filtrados.filter(e => ['Esquiva', 'Bloqueo'].includes(e.tipo)).length;
   
   // 2. Ratio de Contraataque (RC)
@@ -22,7 +22,7 @@ export const calcularMetricas = (eventos, esquina) => {
     const siguienteAccion = filtrados.find(e => 
       e.timestamp > esq.timestamp && 
       e.timestamp <= esq.timestamp + 1.0 && 
-      ['Jab', 'Cross', 'Gancho', 'Uppercut'].includes(e.tipo)
+      ['Jab', 'Recto', 'Cross', 'Gancho', 'Uppercut', 'Swing'].includes(e.tipo)
     );
     if (siguienteAccion) contraataques++;
   });

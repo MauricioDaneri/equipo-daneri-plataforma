@@ -42,7 +42,9 @@ export async function generarSnapshotSesion(id) {
           ts: e.timestamp,
           tipo: e.tipo,
           esquina: e.esquina,
-          nota: e.nota
+          nota: e.nota,
+          snapshot: e.snapshot || null,
+          canvasData: e.canvasData || null
         }))
       },
       videoMetadata: {

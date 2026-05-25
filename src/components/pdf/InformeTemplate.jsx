@@ -129,9 +129,9 @@ const InformeTemplate = forwardRef((props, ref) => {
             <h2 style={estilos.tituloSeccion}>5. EVENTOS CRÍTICOS</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={estilos.evento}><strong>R1 0:45</strong> — Finta + Jab conectado</div>
-              <div style={estilos.evento}><strong>R3 1:12</strong> — Centro de Ring establecido</div>
-              <div style={estilos.evento}><strong>R4 2:30</strong> — Guardia Baja (peligro)</div>
-              <div style={estilos.evento}><strong>R6 0:15</strong> — Indicios de Fatiga</div>
+              <div style={estilos.evento}><strong>R3 1:12</strong> — Esquiva y contraataque con Recto</div>
+              <div style={estilos.evento}><strong>R4 2:30</strong> — Pivoteo y finta ofensiva</div>
+              <div style={estilos.evento}><strong>R6 0:15</strong> — Serie de cruzados en la media distancia</div>
             </div>
           </div>
 
@@ -149,8 +149,7 @@ const InformeTemplate = forwardRef((props, ref) => {
           <h2 style={estilos.tituloSeccion}>7. RECOMENDACIONES DEL ENTRENADOR</h2>
           <div style={{ padding: 20, background: COLORES_PDF.grisFondo, border: `1px solid ${COLORES_PDF.grisBorde}`, borderRadius: 8, height: '100%' }}>
             <p style={{ fontSize: 14, lineHeight: '1.6', margin: 0, color: COLORES_PDF.grisGraficos }}>
-              Se debe trabajar en el acondicionamiento aeróbico para evitar la fatiga mostrada después del cuarto round. 
-              Tácticamente, el cruzado de derecha es altamente efectivo, pero el boxeador tiende a bajar la mano izquierda al tirarlo, abriendo un hueco peligroso para el contragolpe.
+              Tácticamente, el Recto y el Swing de derecha son altamente efectivos para mantener la iniciativa. Se debe trabajar en el reposicionamiento defensivo rápido y en la consistencia de la guardia alta al salir de los intercambios en corta distancia.
             </p>
           </div>
         </div>

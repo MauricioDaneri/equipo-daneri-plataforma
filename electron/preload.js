@@ -17,13 +17,41 @@ contextBridge.exposeInMainWorld('api', {
   // Video: cargar desde ruta absoluta (solo Electron)
   video: {
     cargarDesdeRuta: (ruta) => ipcRenderer.invoke('video:cargarDesdeRuta', ruta),
+    abrirVisorDetachado: () => ipcRenderer.invoke('video:abrirVisorDetachado'),
+    cerrarVisorDetachado: () => ipcRenderer.invoke('video:cerrarVisorDetachado'),
+    // Métodos de sincronización del visor por IPC (evita problemas de origen cruzado de BroadcastChannel)
+    enviarMensajeSync: (msg) => ipcRenderer.send('video:sync-enviar', msg),
+    onMensajeSync: (cb) => {
+      const handler = (_, msg) => cb(msg)
+      ipcRenderer.on('video:sync-recibir', handler)
+      return () => ipcRenderer.removeListener('video:sync-recibir', handler)
+    },
+    enviarMensajeDesdeViewer: (msg) => ipcRenderer.send('video:sync-enviar-desde-viewer', msg),
+    onMensajeDesdeViewer: (cb) => {
+      const handler = (_, msg) => cb(msg)
+      ipcRenderer.on('video:sync-recibir-desde-viewer', handler)
+      return () => ipcRenderer.removeListener('video:sync-recibir-desde-viewer', handler)
+    },
+    onVisorCerrado: (cb) => {
+      const handler = () => cb()
+      ipcRenderer.on('video:visor-cerrado', handler)
+      return () => ipcRenderer.removeListener('video:visor-cerrado', handler)
+    }
   },
 
   // Auto-updater
   actualizacion: {
     instalar:     () => ipcRenderer.invoke('actualizacion:instalar'),
-    onDisponible: (cb) => ipcRenderer.on('actualizacion:disponible', cb),
-    onLista:      (cb) => ipcRenderer.on('actualizacion:lista', cb),
+    onDisponible: (cb) => {
+      const handler = () => cb()
+      ipcRenderer.on('actualizacion:disponible', handler)
+      return () => ipcRenderer.removeListener('actualizacion:disponible', handler)
+    },
+    onLista:      (cb) => {
+      const handler = () => cb()
+      ipcRenderer.on('actualizacion:lista', handler)
+      return () => ipcRenderer.removeListener('actualizacion:lista', handler)
+    },
   },
 
   // ── Auth: Google OAuth via navegador del sistema ────────────────────
@@ -37,6 +65,16 @@ contextBridge.exposeInMainWorld('api', {
       // Devuelve función para limpiar el listener
       return () => ipcRenderer.removeListener('auth:token-recibido', handler)
     },
+  },
+
+  // ── Registro de Errores local (Puente con Antigravity) ───────────────
+  errores: {
+    guardarLog: (errorLog) => ipcRenderer.invoke('errores:guardarLog', errorLog),
+  },
+
+  backup: {
+    guardar: (filename, dataString) => ipcRenderer.invoke('backup:guardar', { filename, dataString }),
+    leer: () => ipcRenderer.invoke('backup:leer'),
   },
 })
 

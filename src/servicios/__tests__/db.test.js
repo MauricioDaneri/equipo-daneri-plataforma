@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { db } from '../db'
+import { db, migrarFechasSesiones } from '../db'
 import { seedIvanVsLeveti, limpiarSeedIvanVsLeveti, arreglarEsquinas } from '../seedIvanVsLeveti'
 
 describe('Base de Datos local Dexie - DaneriAnalystDB', () => {
@@ -103,5 +103,22 @@ describe('Base de Datos local Dexie - DaneriAnalystDB', () => {
     expect(totalBoxeadores).toBe(0)
     expect(totalSesiones).toBe(0)
     expect(totalEventos).toBe(0)
+  })
+
+  it('debe migrar fechas con formato DD/MM/YYYY a YYYY-MM-DD en el ready hook', async () => {
+    const id = await db.sesiones.add({
+      fecha: '20/05/2026',
+      boxeadorRojoId: 1,
+      boxeadorAzulId: 2,
+      rounds: 12,
+      videoPath: 'E:\\Videos\\pelea.mp4',
+      esBorrador: false,
+      createdAt: Date.now()
+    })
+
+    await migrarFechasSesiones(db)
+
+    const sesion = await db.sesiones.get(id)
+    expect(sesion.fecha).toBe('2026-05-20')
   })
 })

@@ -79,13 +79,13 @@ function EventTooltip({ evento, x, y, visible }) {
           🎙️ "{evento.notaVoz}"
         </div>
       )}
-      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--color-texto-muted)' }}>Clic para ir · Doble clic para comparar</div>
+      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--color-texto-muted)' }}>Clic: Bucle (10s) · Doble clic: Editar · Arrastrar: Mover</div>
     </div>
   )
 }
 
 // ─── Componente Principal ──────────────────────────────────────────────────────
-export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiempoActual = 0, onSeek, onCompare }) {
+export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiempoActual = 0, onSeek, onSeekLoop, onCompare, onEditEvento, onMoveEvento }) {
   const barraRef       = useRef(null)
   const [zoom,          setZoom]         = useState(MIN_ZOOM)
   const [scrollOffset,  setScrollOffset] = useState(0) // 0-1, posición del "viewport" dentro del zoom
@@ -93,6 +93,14 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
   const [comparando,    setComparando]   = useState([])      // hasta 2 eventos seleccionados
   const [autoZoomed,    setAutoZoomed]   = useState(false)
   const isDragging     = useRef(false)
+  const clickTimeoutRef = useRef(null)
+
+  // Limpiar timeouts al desmontar
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current)
+    }
+  }, [])
   const dragStartX     = useRef(0)
 
   // ─── Auto-zoom inteligente ──────────────────────────────────────────────────
@@ -189,27 +197,76 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
   const maxNivel = useMemo(() => Math.max(0, ...eventosConNivel.map(e => e._nivel)), [eventosConNivel])
   const alturaTotal = Math.max(ALTURA_BARRA, (maxNivel + 1) * (ALTURA_MARCA + 4) + 20)
 
-  // ─── Click en marca ──────────────────────────────────────────────────────────
-  const handleClickMarca = (e, evento) => {
+  // ─── Arrastre y edición de marcas (Draggable Timeline Markers) ────────────────
+  const handleDragStartMarca = (e, ev) => {
+    if (e.button !== 0) return // Solo click izquierdo
     e.stopPropagation()
-    onSeek?.(evento.tiempoVideo ?? evento.timestamp)
+    e.preventDefault()
+    
+    const id = ev.id
+    const tInicial = ev.tiempoVideo ?? ev.timestamp
+    const xInicial = e.clientX
+    let xActual = e.clientX
+    const anchoBarra = barraRef.current ? barraRef.current.getBoundingClientRect().width : 800
+    
+    const handleMouseMoveDrag = (moveEvent) => {
+      xActual = moveEvent.clientX
+      const deltaX = moveEvent.clientX - xInicial
+      // deltaX en pixeles -> fraccion del ancho -> fraccion del zoom -> segundos
+      const deltaFraccion = deltaX / anchoBarra
+      const deltaSegundos = (deltaFraccion / zoom) * duracion
+      const nuevoTiempo = Math.max(0, Math.min(duracion, tInicial + deltaSegundos))
+      
+      onSeek?.(nuevoTiempo, true)
+      onMoveEvento?.(id, nuevoTiempo)
+    }
+    
+    const handleMouseUpDrag = () => {
+      document.removeEventListener('mousemove', handleMouseMoveDrag)
+      document.removeEventListener('mouseup', handleMouseUpDrag)
+      
+      const deltaTotal = Math.abs(xActual - xInicial)
+      if (deltaTotal < 4) {
+        // Es un clic
+        if (clickTimeoutRef.current) {
+          // Doble clic: abre/edita etiqueta
+          clearTimeout(clickTimeoutRef.current)
+          clickTimeoutRef.current = null
+          onEditEvento?.(ev)
+        } else {
+          // Clic simple: inicia bucle de 10s (5s antes, 5s después del marcador)
+          clickTimeoutRef.current = setTimeout(() => {
+            clickTimeoutRef.current = null
+            onSeekLoop?.(tInicial, ev.id)
+          }, 220)
+        }
+      }
+    }
+    
+    document.addEventListener('mousemove', handleMouseMoveDrag)
+    document.addEventListener('mouseup', handleMouseUpDrag)
   }
+
   const handleDblClickMarca = (e, evento) => {
     e.stopPropagation()
-    const nuevos = comparando.includes(evento)
-      ? comparando.filter(c => c !== evento)
-      : [...comparando.slice(-1), evento]   // máximo 2
-    setComparando(nuevos)
-    if (nuevos.length === 2) onCompare?.({ a: nuevos[0], b: nuevos[1] })
+    // No sobreescribir ya que el doble clic se resuelve de forma nativa en handleMouseUpDrag
   }
 
   // ─── Click en la barra (seek) ────────────────────────────────────────────────
   const handleClickBarra = (e) => {
     if (!barraRef.current || isDragging.current) return
+    if (!duracion || isNaN(duracion) || !isFinite(duracion)) {
+      console.warn("[VideoTimelineOverlay] Cannot seek: duracion is invalid:", duracion)
+      return
+    }
     const rect    = barraRef.current.getBoundingClientRect()
     const fraccion = (e.clientX - rect.left) / rect.width
     // Convertir posición de pantalla a tiempo real
     const tiempoReal = (fraccion / zoom + scrollOffset) * duracion
+    if (isNaN(tiempoReal) || !isFinite(tiempoReal)) {
+      console.warn("[VideoTimelineOverlay] Calculated tiempoReal is invalid:", tiempoReal)
+      return
+    }
     onSeek?.(Math.max(0, Math.min(duracion, tiempoReal)))
   }
 
@@ -247,7 +304,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
         <button
           onClick={() => { setZoom(MIN_ZOOM); setScrollOffset(0) }}
           style={{ fontSize: 10, color: 'var(--color-texto-muted)', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-        >Reset</button>
+        >Restablecer</button>
         {autoZoomed && (
           <span style={{ fontSize: 10, color: 'var(--color-dorado)', background: 'var(--color-dorado-alfa)', padding: '2px 8px', borderRadius: 8, border: '1px solid rgba(212,175,55,0.3)' }}>
             ⚡ Auto-zoom
@@ -284,7 +341,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
           return (
             <div
               key={ev.id || i}
-              onClick={e => handleClickMarca(e, ev)}
+              onMouseDown={e => handleDragStartMarca(e, ev)}
               onDoubleClick={e => handleDblClickMarca(e, ev)}
               onMouseEnter={e => setTooltip({ visible: true, evento: ev, x: e.clientX, y: e.clientY })}
               onMouseMove={e => setTooltip(t => ({ ...t, x: e.clientX, y: e.clientY }))}
@@ -363,7 +420,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
 
       {/* LEYENDA */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', padding: '6px 8px', background: 'var(--color-fondo)', borderTop: '1px solid var(--color-superficie)' }}>
-        {Object.entries(TIPOS_EVENTO).slice(0, 9).map(([nombre, cfg]) => (
+        {Object.entries(TIPOS_EVENTO).map(([nombre, cfg]) => (
           <div key={nombre} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 9, fontWeight: 700, color: cfg.color, fontFamily: 'monospace', background: cfg.color + '22', padding: '1px 4px', borderRadius: 3 }}>
               {cfg.id}
@@ -371,7 +428,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
             <span style={{ fontSize: 10, color: 'var(--color-texto-suave)' }}>{cfg.shortName}</span>
           </div>
         ))}
-        <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-texto-muted)' }}>Scroll = Zoom · Arrastrar = Scroll · Dbl-clic = Comparar</div>
+        <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-texto-muted)' }}>Rueda = Zoom · Arrastrar = Desplazar · Clic = Bucle (10s) · Doble Clic = Editar · Mantener y arrastrar = Mover marca</div>
       </div>
     </div>
   )
