@@ -190,23 +190,41 @@ export async function ejecutarAutoRecuperacion() {
     console.warn('[Auto-Restore] IPC api.backup.leer no disponible en este entorno.');
     return;
   }
+  
+  // Evitar bucles de recarga infinitos si la restauración ya se intentó en esta sesión
+  if (sessionStorage.getItem('db_backup_attempted') === 'true') {
+    console.log('[Auto-Restore] La auto-recuperación ya fue intentada en esta sesión. Omitiendo.');
+    return;
+  }
+
   try {
     const totalBoxeadores = await db.boxeadores.count()
     const totalSesiones = await db.sesiones.count()
     const fueBorradoManualmente = localStorage.getItem('db_manually_cleared') === 'true'
 
     if (totalBoxeadores === 0 && totalSesiones === 0 && !fueBorradoManualmente) {
+      sessionStorage.setItem('db_backup_attempted', 'true'); // Registrar intento inmediatamente para romper bucle
       console.log('[Auto-Restore] Base de datos vacía. Buscando respaldo local...');
       const res = await window.api.backup.leer()
       if (res && res.ok && res.data) {
         const data = res.data
+        
+        // Verificar si realmente hay algo que restaurar para evitar recargas en backups vacíos
+        const tieneBoxeadores = data.boxeadores && data.boxeadores.length > 0;
+        const tieneSesiones = data.sesiones && data.sesiones.length > 0;
+        
+        if (!tieneBoxeadores && !tieneSesiones) {
+          console.log('[Auto-Restore] El archivo de respaldo existe pero no contiene boxeadores ni sesiones.');
+          return;
+        }
+
         console.log('[Auto-Restore] Respaldo detectado. Restaurando tablas automáticamente...')
         
         await db.transaction('rw', [db.boxeadores, db.sesiones, db.eventos, db.configuracion, db.analistas], async () => {
-          if (data.boxeadores && data.boxeadores.length > 0) {
+          if (tieneBoxeadores) {
             await db.boxeadores.bulkAdd(data.boxeadores)
           }
-          if (data.sesiones && data.sesiones.length > 0) {
+          if (tieneSesiones) {
             await db.sesiones.bulkAdd(data.sesiones)
           }
           if (data.eventos && data.eventos.length > 0) {
