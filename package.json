@@ -1,6 +1,6 @@
 {
   "name": "equipo-daneri-plataforma",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Plataforma de Análisis — Equipo Daneri",
   "main": "electron/main.js",
   "scripts": {

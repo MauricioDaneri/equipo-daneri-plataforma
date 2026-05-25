@@ -123,7 +123,7 @@ export async function sincronizarLocalHaciaNube(uid) {
       batch.set(docRef, itemToSync)
       contador++
 
-      if (contador === 500) {
+      if (contador === 25) {
         await batch.commit()
         batch = writeBatch(dbFirestore)
         contador = 0

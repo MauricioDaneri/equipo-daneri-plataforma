@@ -386,19 +386,6 @@ export default function EditorTactico() {
     eventoSeleccionadoIdRef.current = eventoSeleccionadoId;
   }, [eventoSeleccionadoId]);
 
-  // Redirigir a "timeline" si se selecciona un evento que no sea golpe (no-mappable) y el panel "mapa" está activo
-  useEffect(() => {
-    if (eventoSeleccionadoId) {
-      const ev = timeline.find(e => e.id === eventoSeleccionadoId);
-      if (ev) {
-        const esGolpe = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo);
-        if (!esGolpe && panelActivo === "mapa") {
-          setPanelActivo("timeline");
-        }
-      }
-    }
-  }, [eventoSeleccionadoId, timeline, panelActivo]);
-
   useEffect(() => {
     timelineRef.current = timeline;
   }, [timeline]);
@@ -3839,6 +3826,9 @@ export default function EditorTactico() {
                   setBucleRango({ start, end });
                 }
               }}
+              onMoveEvento={(id, nuevoTiempo) => {
+                setTimeline(prev => prev.map(ev => ev.id === id ? { ...ev, timestamp: nuevoTiempo, tiempoVideo: nuevoTiempo } : ev));
+              }}
             />
           )}
 
@@ -4166,7 +4156,7 @@ export default function EditorTactico() {
                       activeColor: "var(--color-azul-suave)",
                     },
                   ].map((tab) => {
-                    const isDisabled = tab.id === "mapa" && !esGolpeSeleccionado;
+                    const isDisabled = false;
                     return (
                       <button
                         key={tab.id}
@@ -4739,7 +4729,13 @@ export default function EditorTactico() {
                         onSelectEvento={handleSelectEvento}
                         onDeselectEvento={() => setEventoSeleccionadoId(null)}
                         onUpdateImpactoCoords={handleUpdateImpactoCoords}
-                        eventoMapeoActivo={timeline.find(e => e.id === eventoSeleccionadoId)}
+                        eventoMapeoActivo={(() => {
+                          const ev = timeline.find(e => e.id === eventoSeleccionadoId);
+                          if (ev && ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo)) {
+                            return ev;
+                          }
+                          return null;
+                        })()}
                         editable={true}
                         esquinaFiltro={esquinaDestino}
                       />

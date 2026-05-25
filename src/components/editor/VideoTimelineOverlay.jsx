@@ -140,6 +140,7 @@ export default function VideoTimelineOverlay({
   const [tooltip,       setTooltip]      = useState({ visible: false, evento: null, x: 0, y: 0 })
   const [comparando,    setComparando]   = useState([])      // hasta 2 eventos seleccionados
   const [autoZoomed,    setAutoZoomed]   = useState(false)
+  const [hoveredMarkerId, setHoveredMarkerId] = useState(null)
   const isDragging     = useRef(false)
   const clickTimeoutRef = useRef(null)
 
@@ -269,7 +270,7 @@ export default function VideoTimelineOverlay({
       }
       
       tracksOcupados[trackIndex].push({ pos, subNivel })
-      return { ...ev, _subNivel: subNivel }
+      return { ...ev, _subNivel: subNivel % 3 }
     })
   }, [eventosVisibles, posicionEvento])
 
@@ -518,7 +519,7 @@ export default function VideoTimelineOverlay({
               : estaEnComparacion 
                 ? `0 0 8px ${cfg.color}` 
                 : 'none',
-            zIndex: esSeleccionado ? 15 : estaEnComparacion ? 10 : 1,
+            zIndex: esSeleccionado ? 15 : estaEnComparacion ? 10 : (hoveredMarkerId === ev.id ? 8 : 1),
             overflow: 'hidden',
           }
 
@@ -545,9 +546,15 @@ export default function VideoTimelineOverlay({
               key={ev.id || i}
               onMouseDown={e => handleDragStartMarca(e, ev)}
               onDoubleClick={e => handleDblClickMarca(e, ev)}
-              onMouseEnter={e => setTooltip({ visible: true, evento: ev, x: e.clientX, y: e.clientY })}
+              onMouseEnter={e => {
+                setHoveredMarkerId(ev.id);
+                setTooltip({ visible: true, evento: ev, x: e.clientX, y: e.clientY });
+              }}
               onMouseMove={e => setTooltip(t => ({ ...t, x: e.clientX, y: e.clientY }))}
-              onMouseLeave={() => setTooltip(t => ({...t, visible: false}))}
+              onMouseLeave={() => {
+                setHoveredMarkerId(null);
+                setTooltip(t => ({ ...t, visible: false }));
+              }}
               style={markerStyle}
             >
               {/* Indicador de esquina */}
