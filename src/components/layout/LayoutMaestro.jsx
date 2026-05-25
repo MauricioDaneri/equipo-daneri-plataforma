@@ -13,23 +13,42 @@ import { RefreshCw, X, Sparkles } from 'lucide-react'
  */
 export default function LayoutMaestro() {
   const location = useLocation()
-  const [actualizacionEstado, setActualizacionEstado] = useState('idle') // 'idle' | 'descargando' | 'lista'
+  const [actualizacionEstado, setActualizacionEstado] = useState('idle') // 'idle' | 'descargando' | 'lista' | 'error'
+  const [progresoDescarga, setProgresoDescarga] = useState({ porcentaje: 0, velocidad: 0 })
+  const [errorMensaje, setErrorMensaje] = useState('')
 
   useEffect(() => {
     if (window.api && window.api.actualizacion) {
-      const limpiarDisponible = window.api.actualizacion.onDisponible(() => {
-        console.log('[LayoutMaestro] Actualización disponible detectada.');
+      const limpiarDisponible = window.api.actualizacion.onDisponible((info) => {
+        console.log('[LayoutMaestro] Actualización disponible detectada:', info?.version);
         setActualizacionEstado('descargando');
       });
 
-      const limpiarLista = window.api.actualizacion.onLista(() => {
-        console.log('[LayoutMaestro] Actualización descargada y lista para instalar.');
+      const limpiarProgreso = window.api.actualizacion.onProgreso((datos) => {
+        setProgresoDescarga({
+          porcentaje: Math.round(datos.porcentaje),
+          velocidad: Math.round((datos.velocidad / 1024 / 1024) * 10) / 10 // Convertir a MB/s
+        });
+      });
+
+      const limpiarLista = window.api.actualizacion.onLista((info) => {
+        console.log('[LayoutMaestro] Actualización descargada y lista para instalar:', info?.version);
         setActualizacionEstado('lista');
+      });
+
+      const limpiarError = window.api.actualizacion.onError((msg) => {
+        console.error('[LayoutMaestro] Error de auto-actualización:', msg);
+        setErrorMensaje(msg);
+        setActualizacionEstado('error');
+        // Ocultar error automáticamente tras 12 segundos
+        setTimeout(() => setActualizacionEstado('idle'), 12000);
       });
 
       return () => {
         if (typeof limpiarDisponible === 'function') limpiarDisponible();
+        if (typeof limpiarProgreso === 'function') limpiarProgreso();
         if (typeof limpiarLista === 'function') limpiarLista();
+        if (typeof limpiarError === 'function') limpiarError();
       };
     }
   }, []);
@@ -78,52 +97,77 @@ export default function LayoutMaestro() {
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             style={estilos.toastActualizacion}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {actualizacionEstado === 'descargando' ? (
-                <div style={estilos.spinnerContainer}>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-                    style={{ display: 'flex' }}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {actualizacionEstado === 'descargando' ? (
+                  <div style={estilos.spinnerContainer}>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                      style={{ display: 'flex' }}
+                    >
+                      <RefreshCw size={18} color="var(--color-dorado)" />
+                    </motion.div>
+                  </div>
+                ) : actualizacionEstado === 'error' ? (
+                  <div style={{ ...estilos.sparkleContainer, background: 'rgba(231,76,60,0.15)', boxShadow: 'none' }}>
+                    <X size={18} color="var(--color-rojo-suave)" />
+                  </div>
+                ) : (
+                  <div style={estilos.sparkleContainer}>
+                    <Sparkles size={18} color="#D4AF37" fill="#D4AF37" />
+                  </div>
+                )}
+                
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', marginBottom: 2 }}>
+                    {actualizacionEstado === 'descargando' 
+                      ? 'Descargando versión...' 
+                      : actualizacionEstado === 'error'
+                        ? 'Error de Actualización'
+                        : '¡Actualización lista!'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--color-texto-suave)', lineHeight: 1.4 }}>
+                    {actualizacionEstado === 'descargando'
+                      ? `Descargando en segundo plano: ${progresoDescarga.porcentaje}% (${progresoDescarga.velocidad} MB/s)`
+                      : actualizacionEstado === 'error'
+                        ? `Error de red o permisos: ${errorMensaje}`
+                        : 'La descarga ha finalizado. Reinicia la aplicación para aplicar las mejoras.'}
+                  </div>
+                </div>
+
+                {actualizacionEstado === 'lista' ? (
+                  <button 
+                    onClick={handleReiniciarYActualizar} 
+                    className="boton-primario" 
+                    style={estilos.btnInstalar}
                   >
-                    <RefreshCw size={18} color="var(--color-dorado)" />
-                  </motion.div>
-                </div>
-              ) : (
-                <div style={estilos.sparkleContainer}>
-                  <Sparkles size={18} color="#D4AF37" fill="#D4AF37" />
-                </div>
-              )}
-              
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', marginBottom: 2 }}>
-                  {actualizacionEstado === 'descargando' 
-                    ? 'Nueva versión disponible' 
-                    : '¡Actualización lista!'}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--color-texto-suave)', lineHeight: 1.4 }}>
-                  {actualizacionEstado === 'descargando'
-                    ? 'Descargando última versión de la plataforma en segundo plano...'
-                    : 'La descarga ha finalizado. Reinicia la aplicación para aplicar las mejoras.'}
-                </div>
+                    Reiniciar
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => setActualizacionEstado('idle')} 
+                    style={estilos.btnCerrarToast}
+                    title="Ocultar"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
 
-              {actualizacionEstado === 'lista' ? (
-                <button 
-                  onClick={handleReiniciarYActualizar} 
-                  className="boton-primario" 
-                  style={estilos.btnInstalar}
-                >
-                  Reiniciar
-                </button>
-              ) : (
-                <button 
-                  onClick={() => setActualizacionEstado('idle')} 
-                  style={estilos.btnCerrarToast}
-                  title="Ocultar"
-                >
-                  <X size={14} />
-                </button>
+              {/* Barra de progreso visual premium */}
+              {actualizacionEstado === 'descargando' && (
+                <div style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginTop: 2 }}>
+                  <div 
+                    style={{ 
+                      width: `${progresoDescarga.porcentaje}%`, 
+                      height: '100%', 
+                      background: 'linear-gradient(to right, #B38F2D, #D4AF37)', 
+                      borderRadius: 2,
+                      transition: 'width 0.3s ease' 
+                    }} 
+                  />
+                </div>
               )}
             </div>
           </motion.div>

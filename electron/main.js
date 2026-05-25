@@ -357,12 +357,34 @@ ipcMain.handle('ventana:cerrar', () => mainWindow.close())
 ipcMain.handle('app:getVersion', () => app.getVersion())
 
 // ── IPC: Auto-updater ──────────────────────────────────────────────────────
-autoUpdater.on('update-available', () => {
-  mainWindow?.webContents.send('actualizacion:disponible')
+autoUpdater.on('checking-for-update', () => {
+  console.log('[AutoUpdater] Checking for update...')
 })
-autoUpdater.on('update-downloaded', () => {
-  mainWindow?.webContents.send('actualizacion:lista')
+autoUpdater.on('update-available', (info) => {
+  console.log('[AutoUpdater] Update available:', info?.version)
+  mainWindow?.webContents.send('actualizacion:disponible', info)
 })
+autoUpdater.on('update-not-available', (info) => {
+  console.log('[AutoUpdater] Update not available.')
+  mainWindow?.webContents.send('actualizacion:no-disponible')
+})
+autoUpdater.on('error', (err) => {
+  console.error('[AutoUpdater] Error:', err?.message)
+  mainWindow?.webContents.send('actualizacion:error', err?.message || 'Error de conexión')
+})
+autoUpdater.on('download-progress', (progressObj) => {
+  mainWindow?.webContents.send('actualizacion:progreso', {
+    porcentaje: progressObj.percent,
+    transferido: progressObj.transferred,
+    total: progressObj.total,
+    velocidad: progressObj.bytesPerSecond
+  })
+})
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('[AutoUpdater] Update downloaded:', info?.version)
+  mainWindow?.webContents.send('actualizacion:lista', info)
+})
+
 ipcMain.handle('actualizacion:instalar', () => {
   autoUpdater.quitAndInstall()
 })

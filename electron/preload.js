@@ -44,12 +44,27 @@ contextBridge.exposeInMainWorld('api', {
     instalar:     () => ipcRenderer.invoke('actualizacion:instalar'),
     buscar:       () => ipcRenderer.invoke('actualizacion:buscar'),
     onDisponible: (cb) => {
-      const handler = () => cb()
+      const handler = (_, info) => cb(info)
       ipcRenderer.on('actualizacion:disponible', handler)
       return () => ipcRenderer.removeListener('actualizacion:disponible', handler)
     },
-    onLista:      (cb) => {
+    onNoDisponible: (cb) => {
       const handler = () => cb()
+      ipcRenderer.on('actualizacion:no-disponible', handler)
+      return () => ipcRenderer.removeListener('actualizacion:no-disponible', handler)
+    },
+    onError: (cb) => {
+      const handler = (_, msg) => cb(msg)
+      ipcRenderer.on('actualizacion:error', handler)
+      return () => ipcRenderer.removeListener('actualizacion:error', handler)
+    },
+    onProgreso: (cb) => {
+      const handler = (_, datos) => cb(datos)
+      ipcRenderer.on('actualizacion:progreso', handler)
+      return () => ipcRenderer.removeListener('actualizacion:progreso', handler)
+    },
+    onLista:      (cb) => {
+      const handler = (_, info) => cb(info)
       ipcRenderer.on('actualizacion:lista', handler)
       return () => ipcRenderer.removeListener('actualizacion:lista', handler)
     },
