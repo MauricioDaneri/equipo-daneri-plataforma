@@ -49,6 +49,7 @@
   "build": {
     "appId": "com.equipodaneri.plataforma",
     "productName": "Plataforma de Análisis — Equipo Daneri",
+    "artifactName": "equipo-daneri-plataforma-setup-${version}.${ext}",
     "directories": {
       "output": "E:\\INSTALADORES",
       "buildResources": "public"

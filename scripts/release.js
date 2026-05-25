@@ -117,8 +117,8 @@ async function main() {
   // 6. Subir los archivos compilados a la versión de GitHub
   const assetsFolder = "E:\\INSTALADORES";
   const filesToUpload = [
-    { name: `Plataforma de Análisis — Equipo Daneri Setup ${version}.exe`, contentType: "application/octet-stream" },
-    { name: `Plataforma de Análisis — Equipo Daneri Setup ${version}.exe.blockmap`, contentType: "application/octet-stream" },
+    { name: `equipo-daneri-plataforma-setup-${version}.exe`, contentType: "application/octet-stream" },
+    { name: `equipo-daneri-plataforma-setup-${version}.exe.blockmap`, contentType: "application/octet-stream" },
     { name: "latest.yml", contentType: "text/yaml" }
   ];
 
