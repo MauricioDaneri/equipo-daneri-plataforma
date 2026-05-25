@@ -65,6 +65,18 @@ async function comprimirBase64(base64Str, maxWidth = 256, maxHeight = 256) {
   })
 }
 
+// Helper recursivo para purgar cualquier propiedad con valor 'undefined' antes de enviar a Firestore
+function sanitizarParaFirestore(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  const result = Array.isArray(obj) ? [] : {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = typeof value === 'object' ? sanitizarParaFirestore(value) : value;
+    }
+  }
+  return result;
+}
+
 // Sincroniza todos los datos locales hacia la nube (Firestore)
 export async function sincronizarLocalHaciaNube(uid) {
   if (!uid) throw new Error('Se requiere el UID del usuario para sincronizar con la nube.')
@@ -90,7 +102,7 @@ export async function sincronizarLocalHaciaNube(uid) {
       const idStr = String(item.id)
       const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
       
-      let itemToSync = { ...item }
+      let itemToSync = sanitizarParaFirestore(item)
       
       // Comprimir foto base64 pesada de los boxeadores antes de sincronizar a Firestore
       if (nombreColeccion === 'boxeadores' && itemToSync.foto) {

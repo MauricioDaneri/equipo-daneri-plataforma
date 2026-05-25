@@ -407,6 +407,7 @@ export default function EditorTactico() {
   const barriendoRef = useRef(false);
 
   // --- Sincronización de Rondas y Video ---
+  const [totalRounds, setTotalRounds] = useState(12);
   const [roundStarts, setRoundStarts] = useState({
     1: 0,
     2: 240,
@@ -915,7 +916,7 @@ export default function EditorTactico() {
   const calcularRoundYRestoConVideo = useCallback(
     (t) => {
       let activeRound = 1;
-      for (let r = 12; r >= 1; r--) {
+      for (let r = totalRounds; r >= 1; r--) {
         if (t >= (roundStarts[r] ?? 999999)) {
           activeRound = r;
           break;
@@ -950,7 +951,7 @@ export default function EditorTactico() {
         tiempoRestante: Math.max(0, Math.ceil(start + duracionRound - t)),
       };
     },
-    [roundStarts, duracionRound],
+    [roundStarts, duracionRound, totalRounds],
   );
 
   const sonarCampana = useCallback(() => {
@@ -1098,6 +1099,10 @@ export default function EditorTactico() {
 
           if (sesion.roundStarts) {
             setRoundStarts(sesion.roundStarts);
+          }
+
+          if (sesion.rounds) {
+            setTotalRounds(Number(sesion.rounds));
           }
 
           const eventos = await db.eventos
@@ -1751,6 +1756,7 @@ export default function EditorTactico() {
           resumenVoz: resumenTexto || "",
           logVoz: JSON.stringify(logVoz),
           roundStarts,
+          rounds: totalRounds,
           esBorrador: false,
           updatedAt: Date.now(),
         });
@@ -1760,7 +1766,7 @@ export default function EditorTactico() {
           fecha: new Date().toISOString().split('T')[0],
           boxeadorRojoId: Number(boxeadorRojoId),
           boxeadorAzulId: Number(boxeadorAzulId),
-          rounds: 12,
+          rounds: totalRounds,
           sintesis: "",
           videoPath: videoAbsolutePath || (videoFile ? videoFile.name : "Video Local"),
           createdAt: Date.now(),
@@ -1919,6 +1925,7 @@ export default function EditorTactico() {
           boxeadorAzulId: boxeadorAzulId ? Number(boxeadorAzulId) : null,
           videoPath: videoAbsolutePath || (videoFile ? videoFile.name : ""),
           roundStarts,
+          rounds: totalRounds,
           updatedAt: Date.now(),
           esBorrador: true,
         });
@@ -1928,7 +1935,7 @@ export default function EditorTactico() {
           fecha: new Date().toISOString().split('T')[0],
           boxeadorRojoId: boxeadorRojoId ? Number(boxeadorRojoId) : null,
           boxeadorAzulId: boxeadorAzulId ? Number(boxeadorAzulId) : null,
-          rounds: 12,
+          rounds: totalRounds,
           sintesis: "",
           videoPath: videoAbsolutePath || (videoFile ? videoFile.name : ""),
           createdAt: Date.now(),
@@ -2481,11 +2488,11 @@ export default function EditorTactico() {
           break;
         case hotkeys.Atras:
           e.preventDefault();
-          saltar(-5);
+          saltar(-2);
           break;
         case hotkeys.Adelante:
           e.preventDefault();
-          saltar(5);
+          saltar(2);
           break;
         case hotkeys.Cursor:
           e.preventDefault();
@@ -3002,18 +3009,20 @@ export default function EditorTactico() {
                   setTiempoRound(Number(e.target.value));
                 }}
                 style={{
-                  background: "transparent",
+                  background: "#1e1e28",
                   border: "none",
                   color: "var(--color-texto-suave)",
                   fontSize: 11,
                   outline: "none",
                   cursor: "pointer",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
                 }}
               >
-                <option value={60}>1 min</option>
-                <option value={120}>2 min</option>
-                <option value={180}>3 min</option>
-                <option value={300}>5 min</option>
+                <option value={60} style={{ background: "#1e1e28", color: "#ffffff" }}>1 min</option>
+                <option value={120} style={{ background: "#1e1e28", color: "#ffffff" }}>2 min</option>
+                <option value={180} style={{ background: "#1e1e28", color: "#ffffff" }}>3 min</option>
+                <option value={300} style={{ background: "#1e1e28", color: "#ffffff" }}>5 min</option>
               </select>
               <div style={estilos.divisor}></div>
               <button
@@ -3072,7 +3081,7 @@ export default function EditorTactico() {
                     paddingRight: 4,
                   }}
                 >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((r) => {
+                  {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => {
                     const startVal = roundStarts[r] ?? 0;
                     return (
                       <div
@@ -3241,22 +3250,56 @@ export default function EditorTactico() {
       <div style={estilos.layoutPrincipal}>
         {/* ZONA IZQUIERDA: Video + Canvas + Botones */}
         <div style={{ ...estilos.zonaVideo, flex: analisisLimpio ? "1" : "3" }}>
-          <div style={estilos.reproductorWrapper} ref={wrapperRef}>
+          <div style={{ ...estilos.reproductorWrapper, display: visorDetachadoAbierto ? 'none' : 'block' }} ref={wrapperRef}>
             {/* Placeholder si no hay video */}
             {!videoUrl && (
-              <div style={estilos.videoPlaceholder}>
-                <Video size={48} color="var(--color-texto-suave)" />
+              <div style={{
+                ...estilos.videoPlaceholder,
+                background: "rgba(26, 26, 36, 0.75)",
+                backdropFilter: "blur(12px)",
+                border: videoFaltante ? "1px solid rgba(231,76,60,0.3)" : "1px solid rgba(212,175,55,0.2)",
+                boxShadow: videoFaltante ? "0 8px 32px rgba(231,76,60,0.15)" : "0 8px 32px rgba(0,0,0,0.3)",
+                borderRadius: "12px",
+                padding: "32px",
+                maxWidth: "480px",
+                margin: "40px auto",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}>
+                <Video size={48} color={videoFaltante ? "var(--color-rojo-suave)" : "var(--color-texto-suave)"} />
                 <p
                   style={{
                     marginTop: 16,
                     color: "var(--color-texto)",
                     fontWeight: 600,
+                    fontSize: "15px",
                   }}
                 >
                   {videoFaltante
                     ? "Sesión Recuperada. Carga el video de nuevo:"
                     : "No hay video seleccionado"}
                 </p>
+                {videoFaltante && videoAbsolutePath && (
+                  <div style={{
+                    marginTop: 14,
+                    marginBottom: 8,
+                    padding: "10px 14px",
+                    background: "rgba(0,0,0,0.3)",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    fontFamily: "monospace",
+                    fontSize: 11,
+                    color: "var(--color-texto-suave)",
+                    wordBreak: "break-all",
+                    textAlign: "left",
+                    width: "100%"
+                  }}>
+                    <div style={{ color: "var(--color-dorado)", fontSize: 9, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Ruta Guardada del Archivo:</div>
+                    📁 {videoAbsolutePath}
+                  </div>
+                )}
                 <input
                   type="file"
                   accept="video/mp4,video/webm,video/ogg"
@@ -3267,13 +3310,15 @@ export default function EditorTactico() {
                 <button
                   className="boton-primario"
                   style={{
-                    marginTop: 16,
+                    marginTop: 20,
                     display: "flex",
                     gap: 8,
                     alignItems: "center",
                     backgroundColor: videoFaltante
                       ? "var(--color-rojo-suave)"
                       : "var(--color-dorado)",
+                    padding: "10px 20px",
+                    borderRadius: "6px"
                   }}
                   onClick={seleccionarVideoNativo}
                 >
@@ -3480,6 +3525,25 @@ export default function EditorTactico() {
             <div style={estilos.timeDisplay}>{formatTime(currentTime)}</div>
 
             <div style={{ flex: 1 }}></div>
+            {visorDetachadoAbierto && (
+              <button
+                className="boton-secundario"
+                onClick={abrirVisorDetachado}
+                style={{
+                  fontSize: 12,
+                  padding: "4px 12px",
+                  marginRight: 8,
+                  borderColor: "var(--color-dorado)",
+                  color: "var(--color-dorado)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5
+                }}
+              >
+                <ExternalLink size={12} style={{ transform: "rotate(180deg)" }} />
+                Acoplar Video
+              </button>
+            )}
             <button
               className="boton-secundario"
               onClick={() => setCapaDibujoVisible(!capaDibujoVisible)}
@@ -3495,6 +3559,10 @@ export default function EditorTactico() {
               eventos={timeline}
               duracion={videoDuration || (videoRef.current && !isNaN(videoRef.current.duration) ? videoRef.current.duration : 0)}
               tiempoActual={currentTime}
+              expanded={visorDetachadoAbierto}
+              style={{
+                flex: visorDetachadoAbierto ? 1 : 'none',
+              }}
               onSeek={(t, keepLoop = false) => {
                 if (!keepLoop) {
                   setBucleRango(null); // Cancelar bucle en búsqueda manual
@@ -3506,9 +3574,9 @@ export default function EditorTactico() {
                 }
               }}
               onSeekLoop={(t, id) => {
-                // Iniciar bucle táctico de 10s (5s antes, 5s después del marcador)
-                const start = Math.max(0, t - 5);
-                const end = t + 5;
+                // Iniciar bucle táctico de 4s (2s antes, 2s después del marcador)
+                const start = Math.max(0, t - 2);
+                const end = t + 2;
                 setBucleRango({ start, end });
                 setBucleEventoId(id || null);
                 if (videoRef.current) {
@@ -3528,8 +3596,8 @@ export default function EditorTactico() {
                 setTimeline(prev => prev.map(ev => ev.id === id ? { ...ev, timestamp: nuevoTimestamp, tiempoVideo: nuevoTimestamp } : ev));
                 // Si el evento movido es el del bucle actual, redefinimos el bucle en tiempo real!
                 if (bucleEventoId === id) {
-                  const start = Math.max(0, nuevoTimestamp - 5);
-                  const end = nuevoTimestamp + 5;
+                  const start = Math.max(0, nuevoTimestamp - 2);
+                  const end = nuevoTimestamp + 2;
                   setBucleRango({ start, end });
                 }
               }}
@@ -4222,26 +4290,28 @@ export default function EditorTactico() {
                                     }}
                                     style={{
                                       ...estilos.eventoTipo,
-                                      background: "transparent",
+                                      background: "#1e1e28",
+                                      color: "#ffffff",
                                       border: "none",
                                       outline: "none",
                                       cursor: "pointer",
                                       appearance: "none",
-                                      padding: 0,
+                                      padding: "2px 6px",
+                                      borderRadius: "4px",
                                     }}
                                   >
-                                    <option value="Jab">Jab</option>
-                                    <option value="Recto">Recto</option>
-                                    <option value="Cross">Cross</option>
-                                    <option value="Gancho">Gancho</option>
-                                    <option value="Uppercut">Uppercut</option>
-                                    <option value="Swing">Swing</option>
-                                    <option value="Finta">Finta</option>
-                                    <option value="Esquiva">Esquiva</option>
-                                    <option value="Bloqueo">Bloqueo</option>
-                                    <option value="Clinch">Clinch</option>
-                                    <option value="Pivoteo">Pivoteo</option>
-                                    <option value="Marca General">Marca General</option>
+                                    <option value="Jab" style={{ background: "#1e1e28", color: "#ffffff" }}>Jab</option>
+                                    <option value="Recto" style={{ background: "#1e1e28", color: "#ffffff" }}>Recto</option>
+                                    <option value="Cross" style={{ background: "#1e1e28", color: "#ffffff" }}>Cross</option>
+                                    <option value="Gancho" style={{ background: "#1e1e28", color: "#ffffff" }}>Gancho</option>
+                                    <option value="Uppercut" style={{ background: "#1e1e28", color: "#ffffff" }}>Uppercut</option>
+                                    <option value="Swing" style={{ background: "#1e1e28", color: "#ffffff" }}>Swing</option>
+                                    <option value="Finta" style={{ background: "#1e1e28", color: "#ffffff" }}>Finta</option>
+                                    <option value="Esquiva" style={{ background: "#1e1e28", color: "#ffffff" }}>Esquiva</option>
+                                    <option value="Bloqueo" style={{ background: "#1e1e28", color: "#ffffff" }}>Bloqueo</option>
+                                    <option value="Clinch" style={{ background: "#1e1e28", color: "#ffffff" }}>Clinch</option>
+                                    <option value="Pivoteo" style={{ background: "#1e1e28", color: "#ffffff" }}>Pivoteo</option>
+                                    <option value="Marca General" style={{ background: "#1e1e28", color: "#ffffff" }}>Marca General</option>
                                   </select>
                                   {ev.lugar ? (
                                     <div
@@ -6088,30 +6158,30 @@ export default function EditorTactico() {
                     });
                   }}
                   style={{
-                    background: "var(--color-superficie-2)",
+                    background: "#1e1e28",
                     border: "1px solid var(--color-borde)",
-                    color: "var(--color-texto)",
+                    color: "#ffffff",
                     borderRadius: 6,
                     padding: "8px 10px",
                     fontSize: 12,
                     outline: "none",
                   }}
                 >
-                  <option value="Jab">Jab</option>
-                  <option value="Recto">Recto</option>
-                  <option value="Cross">Cross</option>
-                  <option value="Gancho">Gancho</option>
-                  <option value="Uppercut">Uppercut</option>
-                  <option value="Swing">Swing</option>
-                  <option value="Finta">Finta</option>
-                  <option value="Esquiva">Esquiva</option>
-                  <option value="Bloqueo">Bloqueo</option>
-                  <option value="Clinch">Clinch</option>
-                  <option value="Pivoteo">Pivoteo</option>
-                  <option value="Marca General">Marca General</option>
+                  <option value="Jab" style={{ background: "#1e1e28", color: "#ffffff" }}>Jab</option>
+                  <option value="Recto" style={{ background: "#1e1e28", color: "#ffffff" }}>Recto</option>
+                  <option value="Cross" style={{ background: "#1e1e28", color: "#ffffff" }}>Cross</option>
+                  <option value="Gancho" style={{ background: "#1e1e28", color: "#ffffff" }}>Gancho</option>
+                  <option value="Uppercut" style={{ background: "#1e1e28", color: "#ffffff" }}>Uppercut</option>
+                  <option value="Swing" style={{ background: "#1e1e28", color: "#ffffff" }}>Swing</option>
+                  <option value="Finta" style={{ background: "#1e1e28", color: "#ffffff" }}>Finta</option>
+                  <option value="Esquiva" style={{ background: "#1e1e28", color: "#ffffff" }}>Esquiva</option>
+                  <option value="Bloqueo" style={{ background: "#1e1e28", color: "#ffffff" }}>Bloqueo</option>
+                  <option value="Clinch" style={{ background: "#1e1e28", color: "#ffffff" }}>Clinch</option>
+                  <option value="Pivoteo" style={{ background: "#1e1e28", color: "#ffffff" }}>Pivoteo</option>
+                  <option value="Marca General" style={{ background: "#1e1e28", color: "#ffffff" }}>Marca General</option>
                   {/* Eventos Legados */}
-                  <option value="Golpe Conectado">Golpe Conectado (Legacy)</option>
-                  <option value="Golpe Errado">Golpe Errado (Legacy)</option>
+                  <option value="Golpe Conectado" style={{ background: "#1e1e28", color: "#ffffff" }}>Golpe Conectado (Legacy)</option>
+                  <option value="Golpe Errado" style={{ background: "#1e1e28", color: "#ffffff" }}>Golpe Errado (Legacy)</option>
                 </select>
               </div>
 

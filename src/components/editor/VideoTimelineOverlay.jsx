@@ -79,13 +79,24 @@ function EventTooltip({ evento, x, y, visible }) {
           🎙️ "{evento.notaVoz}"
         </div>
       )}
-      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--color-texto-muted)' }}>Clic: Bucle (10s) · Doble clic: Editar · Arrastrar: Mover</div>
+      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--color-texto-muted)' }}>Clic: Bucle (4s) · Doble clic: Editar · Arrastrar: Mover</div>
     </div>
   )
 }
 
 // ─── Componente Principal ──────────────────────────────────────────────────────
-export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiempoActual = 0, onSeek, onSeekLoop, onCompare, onEditEvento, onMoveEvento }) {
+export default function VideoTimelineOverlay({ 
+  eventos = [], 
+  duracion = 0, 
+  tiempoActual = 0, 
+  onSeek, 
+  onSeekLoop, 
+  onCompare, 
+  onEditEvento, 
+  onMoveEvento, 
+  expanded = false, 
+  style = {} 
+}) {
   const barraRef       = useRef(null)
   const [zoom,          setZoom]         = useState(MIN_ZOOM)
   const [scrollOffset,  setScrollOffset] = useState(0) // 0-1, posición del "viewport" dentro del zoom
@@ -193,9 +204,15 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
     return resultado
   }, [eventosVisibles, posicionEvento])
 
+  // Parámetros de dimensionamiento dinámicos basados en la prop 'expanded'
+  const currentAlturaMarca = expanded ? 32 : ALTURA_MARCA
+  const currentAlturaBarra = expanded ? 220 : ALTURA_BARRA
+  const gapVertical = expanded ? 12 : 4
+  const paddingVertical = expanded ? 24 : 18
+
   // ─── Altura dinámica basada en niveles ──────────────────────────────────────
   const maxNivel = useMemo(() => Math.max(0, ...eventosConNivel.map(e => e._nivel)), [eventosConNivel])
-  const alturaTotal = Math.max(ALTURA_BARRA, (maxNivel + 1) * (ALTURA_MARCA + 4) + 20)
+  const alturaTotal = Math.max(currentAlturaBarra, (maxNivel + 1) * (currentAlturaMarca + gapVertical) + paddingVertical)
 
   // ─── Arrastre y edición de marcas (Draggable Timeline Markers) ────────────────
   const handleDragStartMarca = (e, ev) => {
@@ -276,7 +293,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
     : 0
 
   return (
-    <div style={{ userSelect: 'none', position: 'relative' }}>
+    <div style={{ userSelect: 'none', position: 'relative', display: 'flex', flexDirection: 'column', ...style }}>
 
       {/* CONTROLES DE ZOOM */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', background: 'var(--color-fondo)', borderTop: '1px solid var(--color-borde)' }}>
@@ -322,7 +339,9 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
         onMouseLeave={() => { handleMouseUp(); setTooltip(t => ({...t, visible: false})) }}
         style={{
           position: 'relative',
-          height: alturaTotal,
+          height: expanded ? 'auto' : alturaTotal,
+          flex: expanded ? 1 : 'none',
+          minHeight: expanded ? currentAlturaBarra : 'auto',
           background: 'var(--color-fondo)',
           overflow: 'hidden',
           cursor: zoom > 1 ? 'grab' : 'pointer',
@@ -336,7 +355,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
         {eventosConNivel.map((ev, i) => {
           const cfg = getTipoEvento(ev.tipo)
           const estaEnComparacion = comparando.includes(ev)
-          const top = 18 + ev._nivel * (ALTURA_MARCA + 4)
+          const top = paddingVertical + ev._nivel * (currentAlturaMarca + gapVertical)
 
           return (
             <div
@@ -353,7 +372,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
                 transform: 'translateX(-50%)',
                 width: 'auto',
                 minWidth: 28,
-                height: ALTURA_MARCA,
+                height: currentAlturaMarca,
                 borderRadius: 4,
                 background: cfg.color + (estaEnComparacion ? 'ff' : '33'),
                 border: `1px solid ${cfg.color}${estaEnComparacion ? 'ff' : '88'}`,
@@ -428,7 +447,7 @@ export default function VideoTimelineOverlay({ eventos = [], duracion = 0, tiemp
             <span style={{ fontSize: 10, color: 'var(--color-texto-suave)' }}>{cfg.shortName}</span>
           </div>
         ))}
-        <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-texto-muted)' }}>Rueda = Zoom · Arrastrar = Desplazar · Clic = Bucle (10s) · Doble Clic = Editar · Mantener y arrastrar = Mover marca</div>
+        <div style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-texto-muted)' }}>Rueda = Zoom · Arrastrar = Displazar · Clic = Bucle (4s) · Doble Clic = Editar · Mantener y arrastrar = Mover marca</div>
       </div>
     </div>
   )

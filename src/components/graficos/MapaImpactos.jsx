@@ -281,13 +281,13 @@ export default function MapaImpactos({
                   style={{ transition: 'all 0.2s ease', pointerEvents: 'none' }}
                 />
 
-                {/* Zona de Interacción Invisible y Amplia (Radio 24px) */}
+                {/* Zona de Interacción de Hover Invisible y Amplia (Radio 24px) */}
                 <circle
                   cx={ev.coordX}
                   cy={ev.coordY}
                   r={24}
                   fill="transparent"
-                  style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                  style={{ cursor: 'default', pointerEvents: eventoMapeoActivo ? 'none' : 'auto' }}
                   onMouseEnter={(e) => {
                     setHoveredDot(ev.id)
                     setDotTooltip({
@@ -308,6 +308,15 @@ export default function MapaImpactos({
                     setHoveredDot(null)
                     setDotTooltip(prev => ({ ...prev, visible: false }))
                   }}
+                />
+
+                {/* Zona de Interacción de Clic Precisa y Concéntrica (Radio 10px) */}
+                <circle
+                  cx={ev.coordX}
+                  cy={ev.coordY}
+                  r={10}
+                  fill="transparent"
+                  style={{ cursor: 'pointer', pointerEvents: eventoMapeoActivo ? 'none' : 'auto' }}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSelectEvento?.(ev)
