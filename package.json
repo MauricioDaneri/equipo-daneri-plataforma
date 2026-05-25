@@ -54,7 +54,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "REEMPLAZAR-CON-USUARIO-GITHUB",
+      "owner": "MauricioDaneri",
       "repo": "equipo-daneri-plataforma"
     },
     "nsis": {
