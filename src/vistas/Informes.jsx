@@ -15,27 +15,10 @@ export default function Informes() {
   const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray())
   const eventosDb = useLiveQuery(() => db.eventos.toArray())
 
-  if (sessionsDb === undefined || boxeadoresDb === undefined || eventosDb === undefined) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--color-fondo)',
-        color: 'var(--color-dorado)',
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: '0.15em'
-      }}>
-        Cargando Informes...
-      </div>
-    );
-  }
-
   // Mapeo rápido de boxeadores para resolver nombres
   const boxeadoresMap = useMemo(() => {
     const map = {}
+    if (!boxeadoresDb) return map
     boxeadoresDb.forEach(b => {
       map[b.id] = b
     })
@@ -45,6 +28,7 @@ export default function Informes() {
   // Conteo de eventos por sesión
   const eventosPorSesion = useMemo(() => {
     const counts = {}
+    if (!eventosDb) return counts
     eventosDb.forEach(e => {
       counts[e.sesionId] = (counts[e.sesionId] || 0) + 1
     })
@@ -53,6 +37,7 @@ export default function Informes() {
 
   // Filtrado y procesamiento
   const sesionesFiltradas = useMemo(() => {
+    if (!sessionsDb || !boxeadoresMap) return []
     return sessionsDb.filter(s => {
       const bRojo = boxeadoresMap[s.boxeadorRojoId]?.nombre || 'Rincón Rojo'
       const bAzul = boxeadoresMap[s.boxeadorAzulId]?.nombre || 'Rincón Azul'
@@ -79,6 +64,24 @@ export default function Informes() {
         console.error("Error al eliminar sesión:", err)
       }
     }
+  }
+
+  if (sessionsDb === undefined || boxeadoresDb === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Informes...
+      </div>
+    );
   }
 
   return (

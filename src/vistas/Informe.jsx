@@ -74,7 +74,7 @@ El boxeador demostró una excelente lectura de los tiempos y del ring. Su desemp
 
   /* ── Estadísticas calculadas desde eventos reales ─────────────────── */
   const stats = useMemo(() => {
-    if (!eventosRaw.length) return null
+    if (!eventosRaw || !eventosRaw.length) return null
 
     const porEsquina = (esq) => eventosRaw.filter(e => e.esquina === esq)
     const roja = porEsquina('roja')

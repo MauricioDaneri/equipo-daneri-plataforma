@@ -18,26 +18,9 @@ export default function Boxeadores() {
   const sesionesDb = useLiveQuery(() => db.sesiones.toArray())
   const eventosDb = useLiveQuery(() => db.eventos.toArray())
 
-  if (boxeadoresDb === undefined || sesionesDb === undefined || eventosDb === undefined) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--color-fondo)',
-        color: 'var(--color-dorado)',
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: '0.15em'
-      }}>
-        Cargando Boxeadores...
-      </div>
-    );
-  }
-
   // --- Procesamiento de Datos Reales de Eficacia y Distribución ---
   const boxeadoresProcesados = useMemo(() => {
+    if (!boxeadoresDb || !sesionesDb || !eventosDb) return []
     return boxeadoresDb.filter(b => !b.archivado).map(boxeador => {
       let conectados = 0
       let errados = 0
@@ -117,6 +100,24 @@ export default function Boxeadores() {
     if (confirmado) {
       await db.boxeadores.update(id, { archivado: true })
     }
+  }
+
+  if (boxeadoresDb === undefined || sesionesDb === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Boxeadores...
+      </div>
+    );
   }
 
   return (

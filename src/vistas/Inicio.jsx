@@ -18,31 +18,16 @@ export default function Inicio() {
   const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray())
   const sesionesDb = useLiveQuery(() => db.sesiones.orderBy('fecha').reverse().toArray())
   const eventosDb = useLiveQuery(() => db.eventos.toArray())
-  
-  if (boxeadoresDb === undefined || sesionesDb === undefined || eventosDb === undefined) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--color-fondo)',
-        color: 'var(--color-dorado)',
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: '0.15em'
-      }}>
-        Cargando Panel de Control...
-      </div>
-    );
-  }
 
   // Total dinámico
-  const totalBoxeadores = boxeadoresDb.length
-  const totalSesiones = sesionesDb.length
+  const totalBoxeadores = boxeadoresDb ? boxeadoresDb.length : 0
+  const totalSesiones = sesionesDb ? sesionesDb.length : 0
 
   // --- Procesamiento de Datos Reales ---
   const { ranking, boxeadoresFiltrados, promedioEficaciaGym, actividadReciente, volumenGolpes, alertasIA, totalFiltradas } = useMemo(() => {
+    if (!boxeadoresDb || !sesionesDb || !eventosDb) {
+      return { ranking: [], boxeadoresFiltrados: [], promedioEficaciaGym: 0, actividadReciente: [], volumenGolpes: [], alertasIA: [], totalFiltradas: 0 }
+    }
     let gymConectados = 0
     let gymErrados = 0
     let golpesGlobales = { 
@@ -219,6 +204,24 @@ export default function Inicio() {
   }
 
   const coloresRanking = ['var(--color-dorado)', 'var(--color-texto)', 'var(--color-texto-suave)']
+
+  if (boxeadoresDb === undefined || sesionesDb === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Panel de Control...
+      </div>
+    );
+  }
 
   return (
     <div style={estilos.pagina}>

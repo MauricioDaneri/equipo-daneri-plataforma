@@ -119,27 +119,8 @@ export default function Sesiones() {
   const sesionesRaw = useLiveQuery(() => db.sesiones.toArray())
   const boxeadores = useLiveQuery(() => db.boxeadores.toArray())
   const eventosDb = useLiveQuery(() => db.eventos.toArray())
-
-  if (sesionesRaw === undefined || boxeadores === undefined || eventosDb === undefined) {
-    return (
-      <div style={{
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--color-fondo)',
-        color: 'var(--color-dorado)',
-        fontSize: 13,
-        textTransform: 'uppercase',
-        letterSpacing: '0.15em'
-      }}>
-        Cargando Sesiones...
-      </div>
-    );
-  }
-
   useEffect(() => {
-    if (boxeadores.length > 0) {
+    if (boxeadores && boxeadores.length > 0) {
       const activos = boxeadores.filter(b => !b.archivado)
       if (activos.length > 0) {
         if (!boxeadorAId) setBoxeadorAId(activos[0].id.toString())
@@ -150,7 +131,7 @@ export default function Sesiones() {
 
   // Lógica Comparativa Dual Real
   const statsComparativas = useMemo(() => {
-    if (!boxeadorAId || !boxeadorBId) return null
+    if (!boxeadorAId || !boxeadorBId || !sesionesRaw || !eventosDb || !boxeadores) return null
 
     const calculateBoxerStats = (boxerId) => {
       const susSesiones = sesionesRaw.filter(s => s.boxeadorRojoId === boxerId || s.boxeadorAzulId === boxerId)
@@ -224,6 +205,7 @@ export default function Sesiones() {
   }, [boxeadorAId, boxeadorBId, sesionesRaw, eventosDb, boxeadores])
 
   const sesionesDb = useMemo(() => {
+    if (!sesionesRaw || !boxeadores) return []
     return sesionesRaw.map(s => {
       const rojo = boxeadores.find(b => b.id === s.boxeadorRojoId)
       const azul = boxeadores.find(b => b.id === s.boxeadorAzulId)
@@ -317,7 +299,26 @@ export default function Sesiones() {
     }
   }
 
+  if (sesionesRaw === undefined || boxeadores === undefined || eventosDb === undefined) {
+    return (
+      <div style={{
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-fondo)',
+        color: 'var(--color-dorado)',
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: '0.15em'
+      }}>
+        Cargando Sesiones...
+      </div>
+    );
+  }
+
   return (
+
     <div style={estilos.layout}>
       <div style={estilos.principal}>
         <header style={estilos.header}>
