@@ -3,9 +3,9 @@
  * Plataforma de Análisis — Equipo Daneri
  * Skill_OllamaIntegration — Ollama es OPCIONAL
  */
+import { db } from './db'
 
 const getConfig = async () => {
-  const { db } = await import('./db.js')
   const config = await db.configuracion.get(1)
   return {
     url: config?.ollamaUrl ?? 'http://localhost:11434',

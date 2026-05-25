@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './servicios/firebase'
 import { ModalProvider } from './context/ModalContext'
+import { realizarRespaldoAutomatico, ejecutarAutoRecuperacion } from './servicios/db'
 
 import LayoutMaestro from './components/layout/LayoutMaestro'
 import Inicio from './vistas/Inicio'
@@ -32,10 +33,8 @@ export default function App() {
 
   useEffect(() => {
     if (usuario) {
-      import('./servicios/db').then(({ realizarRespaldoAutomatico, ejecutarAutoRecuperacion }) => {
-        ejecutarAutoRecuperacion().finally(() => {
-          realizarRespaldoAutomatico()
-        })
+      ejecutarAutoRecuperacion().finally(() => {
+        realizarRespaldoAutomatico()
       })
     }
   }, [usuario])
