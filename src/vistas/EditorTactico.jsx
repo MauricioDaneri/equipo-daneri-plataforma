@@ -420,6 +420,23 @@ export default function EditorTactico() {
   const [filtroEstadisticasRound, setFiltroEstadisticasRound] = useState("todos");
   const [cargandoDatos, setCargandoDatos] = useState(true);
 
+  // --- Sincronización de Rondas y Video (declaradas antes de los useMemo que las referencian) ---
+  const [totalRounds, setTotalRounds] = useState(12);
+  const [roundStarts, setRoundStarts] = useState({
+    1: 0,
+    2: 240,
+    3: 480,
+    4: 720,
+    5: 960,
+    6: 1200,
+    7: 1440,
+    8: 1680,
+    9: 1920,
+    10: 2160,
+    11: 2400,
+    12: 2640,
+  });
+
   const eventosConNumero = useMemo(() => {
     const ordenados = [...timeline].sort((a, b) => a.timestamp - b.timestamp);
     const conteo = {};
@@ -487,22 +504,6 @@ export default function EditorTactico() {
   const [stepBarrido, setStepBarrido] = useState(1.0);
   const barriendoRef = useRef(false);
 
-  // --- Sincronización de Rondas y Video ---
-  const [totalRounds, setTotalRounds] = useState(12);
-  const [roundStarts, setRoundStarts] = useState({
-    1: 0,
-    2: 240,
-    3: 480,
-    4: 720,
-    5: 960,
-    6: 1200,
-    7: 1440,
-    8: 1680,
-    9: 1920,
-    10: 2160,
-    11: 2400,
-    12: 2640,
-  });
   const [mostrarMenuSincronizacion, setMostrarMenuSincronizacion] =
     useState(false);
   const [estadoRound, setEstadoRound] = useState("COMBATE"); // 'COMBATE' | 'DESCANSO'
