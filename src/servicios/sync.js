@@ -110,69 +110,102 @@ export async function sincronizarLocalHaciaNube(uid) {
     // Helper para subir datos con throttling dinámico y reintentos con backoff
     const MAX_RETRIES = 3
 
-    const subirColeccion = async (nombreColeccion, items, sizeLimit = 10, delayMs = 300) => {
-      if (!items || items.length === 0) return
-
-      let batch = writeBatch(dbFirestore)
-      let contador = 0
-
-      for (const item of items) {
-        const idStr = String(item.id)
-        const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
-        
-        let itemToSync = sanitizarParaFirestore(item)
-        
-        // Comprimir foto base64 pesada de los boxeadores antes de sincronizar a Firestore
-        if (nombreColeccion === 'boxeadores' && itemToSync.foto) {
-          try {
-            itemToSync.foto = await comprimirBase64(itemToSync.foto)
-          } catch (errFoto) {
-            console.warn('[Sync] Error comprimiendo foto de boxeador:', errFoto)
+    const setDocConRetry = async (docRef, data, nombreColeccion, maxRetries = 3) => {
+      for (let intento = 0; intento < maxRetries; intento++) {
+        try {
+          await setDoc(docRef, data)
+          return
+        } catch (err) {
+          const esRecursoAgotado = err?.code === 'resource-exhausted' || err?.message?.includes('resource-exhausted')
+          if (esRecursoAgotado && intento < maxRetries - 1) {
+            const backoffMs = Math.min(1000 * Math.pow(2, intento), 8000)
+            console.warn(`[Sync] setDoc resource-exhausted en ${nombreColeccion}. Reintentando en ${backoffMs}ms... (intento ${intento + 1}/${maxRetries})`)
+            await new Promise(resolve => setTimeout(resolve, backoffMs))
+          } else {
+            throw err
           }
         }
-        
-        // Sanitizar el videoPath en la nube para no revelar rutas de disco locales absolutas de Windows.
-        // Guardamos sólo el nombre del archivo de video.
-        if (nombreColeccion === 'sesiones' && itemToSync.videoPath) {
-          const partes = itemToSync.videoPath.split(/[\\/]/)
-          itemToSync.videoPath = partes[partes.length - 1] // E.g., "Ivan_vs_Leveti_22min.mp4"
+      }
+    }
+
+    const subirColeccion = async (nombreColeccion, items, usarBatch = false, sizeLimit = 10, delayMs = 300) => {
+      if (!items || items.length === 0) return
+
+      if (!usarBatch) {
+        // Subida individual mediante setDoc secuencial (totalmente inmune al límite de payload de 10MB de Firestore)
+        for (const item of items) {
+          const idStr = String(item.id)
+          const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
+          
+          let itemToSync = sanitizarParaFirestore(item)
+          
+          // Comprimir foto base64 de boxeadores
+          if (nombreColeccion === 'boxeadores' && itemToSync.foto) {
+            try {
+              itemToSync.foto = await comprimirBase64(itemToSync.foto)
+            } catch (errFoto) {
+              console.warn('[Sync] Error comprimiendo foto de boxeador:', errFoto)
+            }
+          }
+          
+          // Sanitizar el videoPath en sesiones
+          if (nombreColeccion === 'sesiones' && itemToSync.videoPath) {
+            const partes = itemToSync.videoPath.split(/[\\/]/)
+            itemToSync.videoPath = partes[partes.length - 1]
+          }
+
+          await setDocConRetry(docRef, itemToSync, nombreColeccion, MAX_RETRIES)
+          await new Promise(resolve => setTimeout(resolve, delayMs)) // Retardo entre documentos
+        }
+      } else {
+        // Subida eficiente por writeBatch para grandes cantidades de documentos ligeros (eventos)
+        let batch = writeBatch(dbFirestore)
+        let contador = 0
+
+        for (const item of items) {
+          const idStr = String(item.id)
+          const docRef = doc(dbFirestore, 'usuarios', uid, nombreColeccion, idStr)
+          
+          let itemToSync = sanitizarParaFirestore(item)
+          
+          batch.set(docRef, itemToSync)
+          contador++
+
+          if (contador === sizeLimit) {
+            await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
+            await new Promise(resolve => setTimeout(resolve, delayMs))
+            batch = writeBatch(dbFirestore)
+            contador = 0
+          }
         }
 
-        batch.set(docRef, itemToSync)
-        contador++
-
-        if (contador === sizeLimit) {
+        if (contador > 0) {
           await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
           await new Promise(resolve => setTimeout(resolve, delayMs))
-          batch = writeBatch(dbFirestore)
-          contador = 0
         }
-      }
-
-      if (contador > 0) {
-        await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
-        await new Promise(resolve => setTimeout(resolve, delayMs))
       }
     }
 
     // Ejecutar subidas ordenadas con throttling adaptativo y períodos de enfriamiento (cooldown)
-    // para permitir al SDK de Firestore vaciar su write stream interno y evitar resource-exhausted.
-    await subirColeccion('boxeadores', boxeadores, 5, 500) // Lote pequeño por fotos base64
-    await new Promise(resolve => setTimeout(resolve, 1200)) // Enfriamiento entre colecciones
+    // Usamos setDoc individual para colecciones pesadas, evitando exceder 10MB de payload.
+    await subirColeccion('boxeadores', boxeadores, false, 0, 150) // Subida individual con 150ms
+    await new Promise(resolve => setTimeout(resolve, 1500)) // Enfriamiento entre colecciones
     
-    await subirColeccion('sesiones', sesiones, 10, 400)
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    await subirColeccion('sesiones', sesiones, false, 0, 120)
+    await new Promise(resolve => setTimeout(resolve, 1500))
     
-    await subirColeccion('eventos', eventos, 100, 600) // Lote grande y espaciado para reducir 90% los commits
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    // Eventos es masivo y ligero (<1KB). Usamos batch de 40 docs con 350ms de pausa (payload ~40KB, ultra seguro).
+    await subirColeccion('eventos', eventos, true, 40, 350)
+    await new Promise(resolve => setTimeout(resolve, 1500))
     
-    await subirColeccion('anotaciones', anotaciones, 10, 500) // Puede contener JSONs pesados de Fabric
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    // Anotaciones de Fabric.js (puede ser muy pesado por JSON vectorial). Usamos setDoc individual con 150ms.
+    await subirColeccion('anotaciones', anotaciones, false, 0, 150)
+    await new Promise(resolve => setTimeout(resolve, 1500))
     
-    await subirColeccion('configuracion', configuracion, 20, 300)
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    await subirColeccion('configuracion', configuracion, false, 0, 100)
+    await new Promise(resolve => setTimeout(resolve, 1500))
     
-    await subirColeccion('analistas', analistas, 20, 300)
+    await subirColeccion('analistas', analistas, false, 0, 100)
 
     console.log('[Sync] Sincronización de local a nube finalizada con éxito.')
     return {

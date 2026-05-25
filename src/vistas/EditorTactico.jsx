@@ -290,6 +290,19 @@ function CustomDropdown({ label, value, onChange, boxeadores, cornerColor }) {
   );
 }
 
+// Helper puro para calcular el asalto (round) de un evento en base a su timestamp y la configuración
+const obtenerRoundDeEvento = (ev, starts, total) => {
+  const t = ev.tiempoVideo ?? ev.timestamp;
+  let activeRound = 1;
+  for (let r = total; r >= 1; r--) {
+    if (t >= (starts[r] ?? 999999)) {
+      activeRound = r;
+      break;
+    }
+  }
+  return activeRound;
+};
+
 export default function EditorTactico() {
   const { mostrarConfirmacion, mostrarAlerta } = useModal()
   const videoRef = useRef(null);
@@ -421,7 +434,10 @@ export default function EditorTactico() {
     let filtrados = eventosConNumero;
 
     if (filtroRound !== "todos") {
-      filtrados = filtrados.filter(ev => ev.round === Number(filtroRound));
+      filtrados = filtrados.filter(ev => {
+        const rAct = obtenerRoundDeEvento(ev, roundStarts, totalRounds);
+        return rAct === Number(filtroRound);
+      });
     }
 
     if (terminoBusqueda.trim() !== "") {
@@ -443,12 +459,15 @@ export default function EditorTactico() {
     }
 
     return filtrados;
-  }, [eventosConNumero, filtroRound, terminoBusqueda, boxeadoresDb, boxeadorRojoId, boxeadorAzulId]);
+  }, [eventosConNumero, filtroRound, terminoBusqueda, boxeadoresDb, boxeadorRojoId, boxeadorAzulId, roundStarts, totalRounds]);
 
   const timelineFiltradaParaStats = useMemo(() => {
     if (filtroEstadisticasRound === "todos") return timeline;
-    return timeline.filter(ev => ev.round === Number(filtroEstadisticasRound));
-  }, [timeline, filtroEstadisticasRound]);
+    return timeline.filter(ev => {
+      const rAct = obtenerRoundDeEvento(ev, roundStarts, totalRounds);
+      return rAct === Number(filtroEstadisticasRound);
+    });
+  }, [timeline, filtroEstadisticasRound, roundStarts, totalRounds]);
 
   // --- Clean Analysis Mode ---
   const [analisisLimpio, setAnalisisLimpio] = useState(false);
