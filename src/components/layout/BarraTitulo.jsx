@@ -1,4 +1,4 @@
-import { Minus, Square, X, Cloud, CloudOff } from 'lucide-react'
+import { Minus, Square, X, Cloud, CloudOff, RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 /**
@@ -59,7 +59,7 @@ export default function BarraTitulo() {
             <CloudOff size={14} />
           ) : syncStatus === 'syncing' ? (
             <div className="spin" style={{ display: 'flex' }}>
-              <Cloud size={14} style={{ color: 'var(--color-dorado)', filter: 'drop-shadow(0 0 4px rgba(212,175,55,0.6))' }} />
+              <RefreshCw size={14} style={{ color: 'var(--color-dorado)', filter: 'drop-shadow(0 0 4px rgba(212,175,55,0.6))' }} />
             </div>
           ) : (
             <Cloud size={14} />

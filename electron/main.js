@@ -216,6 +216,7 @@ function crearVentana() {
           maximizable: false,
           title: 'Iniciar sesión con Google — Equipo Daneri',
           autoHideMenuBar: true,
+          icon: path.join(__dirname, '../public/assets/icon.ico'),
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -474,6 +475,39 @@ ipcMain.handle('backup:leer', async () => {
     console.error('[Electron] Error leyendo backup automático:', e.message)
     return { ok: false, error: e.message }
   }
+})
+
+// ── IPC: Verificar si Ollama está corriendo de forma silenciosa desde Node.js ──
+ipcMain.handle('ollama:verificar', async (event, urlStr) => {
+  return new Promise((resolve) => {
+    try {
+      const parsedUrl = new URL(urlStr || 'http://localhost:11434')
+      const options = {
+        hostname: parsedUrl.hostname === 'localhost' ? '127.0.0.1' : parsedUrl.hostname,
+        port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+        path: '/api/tags',
+        method: 'GET',
+        timeout: 1500
+      }
+      
+      const req = http.request(options, (res) => {
+        resolve(res.statusCode === 200)
+      })
+      
+      req.on('error', () => {
+        resolve(false)
+      })
+      
+      req.on('timeout', () => {
+        req.destroy()
+        resolve(false)
+      })
+      
+      req.end()
+    } catch (e) {
+      resolve(false)
+    }
+  })
 })
 
 // ── IPC: Abrir Visor de Video Desacoplado (segunda ventana) ─────────────────────

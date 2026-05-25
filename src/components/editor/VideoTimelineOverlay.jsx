@@ -211,19 +211,37 @@ export default function VideoTimelineOverlay({
   // ─── Detectar clusters (eventos muy cercanos) ────────────────────────────────
   const eventosConNivel = useMemo(() => {
     const sorted = [...eventosVisibles].sort((a, b) => (a.tiempoVideo ?? a.timestamp) - (b.tiempoVideo ?? b.timestamp))
-    const resultado = []
-    const ocupado   = [] // [{ pos, nivel }]
     
-    sorted.forEach(ev => {
+    // Calcular nivel general para modo compacto
+    const generalOcupado = [] // [{ pos, nivel }]
+    const resultadoPre = sorted.map(ev => {
       const pos = posicionEvento(ev)
       let nivel = 0
-      while (ocupado.some(o => o.nivel === nivel && Math.abs(o.pos - pos) < 2.5)) {
+      while (generalOcupado.some(o => o.nivel === nivel && Math.abs(o.pos - pos) < 2.5)) {
         nivel++
       }
-      ocupado.push({ pos, nivel })
-      resultado.push({ ...ev, _nivel: nivel, _pos: pos })
+      generalOcupado.push({ pos, nivel })
+      return { ...ev, _nivel: nivel, _pos: pos }
     })
-    return resultado
+
+    // Calcular subniveles dentro de cada track para evitar solapamientos en modo expandido
+    const tracksOcupados = {} // { trackIndex: [{ pos, subNivel }] }
+    return resultadoPre.map(ev => {
+      const trackIndex = getTrackIndex(ev.tipo)
+      if (!tracksOcupados[trackIndex]) {
+        tracksOcupados[trackIndex] = []
+      }
+      let subNivel = 0
+      const pos = ev._pos
+      
+      // Dos insignias se solapan si están a menos de 6.5% de distancia horizontal
+      while (tracksOcupados[trackIndex].some(o => o.subNivel === subNivel && Math.abs(o.pos - pos) < 6.5)) {
+        subNivel++
+      }
+      
+      tracksOcupados[trackIndex].push({ pos, subNivel })
+      return { ...ev, _subNivel: subNivel }
+    })
   }, [eventosVisibles, posicionEvento])
 
   // Mapeos de tracks multilinea para el modo expandido
@@ -256,10 +274,17 @@ export default function VideoTimelineOverlay({
   };
 
   const currentAlturaMarca = expanded ? 24 : ALTURA_MARCA
-  const ALTURA_LANE = 38
+  const ALTURA_LANE = 54
   const currentAlturaBarra = expanded ? 240 : ALTURA_BARRA
   const gapVertical = expanded ? 6 : 4
   const paddingVertical = expanded ? 28 : 18
+
+  const getSubNivelOffset = (subNivel) => {
+    if (!subNivel) return 0
+    const factor = Math.ceil(subNivel / 2)
+    const signo = subNivel % 2 === 1 ? -1 : 1
+    return signo * factor * 9 // Escalonamiento de 9px
+  }
 
   // ─── Altura dinámica basada en niveles / lanes ──────────────────────────────────────
   const maxNivel = useMemo(() => Math.max(0, ...eventosConNivel.map(e => e._nivel)), [eventosConNivel])
@@ -414,11 +439,12 @@ export default function VideoTimelineOverlay({
         onMouseLeave={() => { handleMouseUp(); setTooltip(t => ({...t, visible: false})) }}
         style={{
           position: 'relative',
-          height: expanded ? 'auto' : alturaTotal,
+          height: expanded ? 'auto' : 120,
           flex: expanded ? 1 : 'none',
-          minHeight: expanded ? alturaTotal : 'auto',
+          minHeight: expanded ? alturaTotal : 120,
           background: 'var(--color-fondo)',
-          overflow: 'hidden',
+          overflowY: expanded ? 'hidden' : 'auto',
+          overflowX: 'hidden',
           cursor: zoom > 1 ? 'grab' : 'pointer',
           borderTop: '1px solid var(--color-borde)',
         }}
@@ -463,7 +489,7 @@ export default function VideoTimelineOverlay({
 
           // Calcular posicion vertical segun el modo expandido (lanes fijas) o compact
           const top = expanded
-            ? paddingVertical + getTrackIndex(ev.tipo) * ALTURA_LANE + (ALTURA_LANE - currentAlturaMarca) / 2
+            ? paddingVertical + getTrackIndex(ev.tipo) * ALTURA_LANE + (ALTURA_LANE - currentAlturaMarca) / 2 + getSubNivelOffset(ev._subNivel)
             : paddingVertical + ev._nivel * (currentAlturaMarca + gapVertical)
 
           const hasDur = ev.duracion > 0

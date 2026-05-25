@@ -92,6 +92,9 @@ contextBridge.exposeInMainWorld('api', {
     guardar: (filename, dataString) => ipcRenderer.invoke('backup:guardar', { filename, dataString }),
     leer: () => ipcRenderer.invoke('backup:leer'),
   },
+  ollama: {
+    verificar: (url) => ipcRenderer.invoke('ollama:verificar', url),
+  },
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
 })
 

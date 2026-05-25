@@ -20,6 +20,11 @@ const getConfig = async () => {
 export async function verificarOllama() {
   try {
     const { url } = await getConfig()
+    // Si estamos en Electron, usamos el chequeo silencioso por IPC para evitar ERR_CONNECTION_REFUSED
+    if (window.api && window.api.ollama && typeof window.api.ollama.verificar === 'function') {
+      return await window.api.ollama.verificar(url)
+    }
+    // Fallback para navegador web normal
     const res = await fetch(`${url}/api/tags`, {
       signal: AbortSignal.timeout(2000),
     })
