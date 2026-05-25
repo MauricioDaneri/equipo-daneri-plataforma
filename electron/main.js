@@ -170,6 +170,14 @@ function crearVentana() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 
+  // ✅ Habilitar F12 para abrir las Herramientas de Desarrollo (DevTools) en cualquier entorno
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      mainWindow.webContents.toggleDevTools()
+      event.preventDefault()
+    }
+  })
+
   // ── Permitir que Firebase abra su ventana OAuth de Google ─────────────────
   // signInWithPopup abre una ventana nueva; Electron debe permitirlo.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
