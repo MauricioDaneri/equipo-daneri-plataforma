@@ -51,6 +51,11 @@ db.version(4).stores({
   sesiones: '++id, fecha, boxeadorRojoId, boxeadorAzulId, videoPath',
   eventos: '++id, sesionId, timestamp, tipo, esquina',
   anotaciones: '++id, sesionId, videoTimestamp',
+  
+  // Mantenemos las tablas agregadas en versiones anteriores para evitar que Dexie las elimine
+  configuracion: 'id, ollamaUrl, ollamaModelo, analistaNombre',
+  analistas: '++id, nombre, rol, activo, createdAt',
+  logsErrores: '++id, fecha, errorMensaje, stackTrace, vista, sesionId',
 })
 
 // ── Datos iniciales (seed) ─────────────────────────────────────────────────
