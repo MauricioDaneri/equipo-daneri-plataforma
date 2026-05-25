@@ -363,6 +363,28 @@
     }
 
     let isSyncingFromEditor = false;
+    let lastEventos = [];
+
+    // Configuración de rounds local
+    let roundStarts = { 1: 0, 2: 240, 3: 480, 4: 720, 5: 960, 6: 1200, 7: 1440, 8: 1680, 9: 1920, 10: 2160, 11: 2400, 12: 2640 };
+    let totalRounds = 12;
+    let duracionRound = 180;
+
+    function calcularRoundLocal(t) {
+      let activeRound = 1;
+      for (let r = totalRounds; r >= 1; r--) {
+        if (t >= (roundStarts[r] ?? 999999)) {
+          activeRound = r;
+          break;
+        }
+      }
+      return activeRound;
+    }
+
+    function actualizarRoundDisplay(t) {
+      const activeRound = calcularRoundLocal(t);
+      roundNum.textContent = activeRound;
+    }
 
     // Inicializar fabric.Canvas interactivo
     function initCanvas() {
@@ -525,7 +547,18 @@
           roundNum.textContent = payload.round;
         }
 
+        if (type === 'SESSION_INFO') {
+          if (payload.roundStarts) roundStarts = payload.roundStarts;
+          if (payload.totalRounds) totalRounds = Number(payload.totalRounds);
+          if (payload.duracionRound) duracionRound = Number(payload.duracionRound);
+          actualizarRoundDisplay(video.currentTime);
+          if (lastEventos) {
+            renderEventos(lastEventos, video.duration || 1);
+          }
+        }
+
         if (type === 'EVENTOS_UPDATE') {
+          lastEventos = payload.eventos;
           renderEventos(payload.eventos, video.duration);
         }
 
@@ -583,7 +616,7 @@
     });
 
     video.addEventListener('timeupdate', () => {
-      console.log("[Visor] video.timeupdate event: currentTime =", video.currentTime);
+      actualizarRoundDisplay(video.currentTime);
     });
 
     window.addEventListener('resize', () => {

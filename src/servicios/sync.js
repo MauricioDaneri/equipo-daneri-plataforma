@@ -125,6 +125,7 @@ export async function sincronizarLocalHaciaNube(uid) {
 
       if (contador === 25) {
         await batch.commit()
+        await new Promise(resolve => setTimeout(resolve, 80)) // Dar un respiro al stream de Firestore
         batch = writeBatch(dbFirestore)
         contador = 0
       }
@@ -132,6 +133,7 @@ export async function sincronizarLocalHaciaNube(uid) {
 
     if (contador > 0) {
       await batch.commit()
+      await new Promise(resolve => setTimeout(resolve, 80))
     }
   }
 

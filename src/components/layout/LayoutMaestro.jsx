@@ -72,9 +72,7 @@ export default function LayoutMaestro() {
       window.dispatchEvent(new CustomEvent('sync:status', { detail: { status: 'syncing' } }));
       
       try {
-        // 1. Descargar cambios de la nube a local
-        await sincronizarNubeHaciaLocal(user.uid);
-        // 2. Subir cambios locales a la nube
+        // Subir cambios locales a la nube (evitamos descargar en segundo plano para no sobreescribir el trabajo activo del analista)
         await sincronizarLocalHaciaNube(user.uid);
         
         const timestamp = new Date().toLocaleString();

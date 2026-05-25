@@ -132,7 +132,9 @@ export default function VideoTimelineOverlay({
   onUpdateEvento,
   expanded = false, 
   eventoSeleccionadoId,
-  style = {} 
+  style = {},
+  roundStarts = {},
+  totalRounds = 12
 }) {
   const barraRef       = useRef(null)
   const [zoom,          setZoom]         = useState(MIN_ZOOM)
@@ -142,6 +144,7 @@ export default function VideoTimelineOverlay({
   const [autoZoomed,    setAutoZoomed]   = useState(false)
   const [hoveredMarkerId, setHoveredMarkerId] = useState(null)
   const isDragging     = useRef(false)
+  const hasDragged     = useRef(false)
   const clickTimeoutRef = useRef(null)
 
   // Limpiar timeouts al desmontar
@@ -209,10 +212,15 @@ export default function VideoTimelineOverlay({
     if (zoom <= 1) return
     isDragging.current = true
     dragStartX.current = e.clientX
+    hasDragged.current = false
     e.preventDefault()
   }
   const handleMouseMove = useCallback((e) => {
     if (!isDragging.current || !barraRef.current) return
+    const deltaX = Math.abs(e.clientX - dragStartX.current)
+    if (deltaX > 2) {
+      hasDragged.current = true
+    }
     const ancho  = barraRef.current.getBoundingClientRect().width
     const delta  = (e.clientX - dragStartX.current) / ancho / zoom
     dragStartX.current = e.clientX
@@ -375,6 +383,10 @@ export default function VideoTimelineOverlay({
 
   // ─── Click en la barra (seek) ────────────────────────────────────────────────
   const handleClickBarra = (e) => {
+    if (hasDragged.current) {
+      hasDragged.current = false
+      return
+    }
     if (!barraRef.current || isDragging.current) return
     if (!duracion || isNaN(duracion) || !isFinite(duracion)) {
       console.warn("[VideoTimelineOverlay] Cannot seek: duracion is invalid:", duracion)
@@ -483,6 +495,47 @@ export default function VideoTimelineOverlay({
             ))}
           </div>
         )}
+
+        {/* Marcadores verticales de inicio de asaltos (Rounds) */}
+        {duracion > 0 && Array.from({ length: totalRounds - 1 }, (_, i) => i + 2).map(r => {
+          const startTime = roundStarts[r];
+          if (startTime === undefined || startTime === null || startTime > duracion) return null;
+          const pct = ((startTime / duracion - scrollOffset) * zoom) * 100;
+          if (pct < 0 || pct > 100) return null;
+          return (
+            <div
+              key={`round-line-${r}`}
+              style={{
+                position: 'absolute',
+                left: `${pct}%`,
+                top: 0,
+                bottom: 0,
+                width: 2,
+                borderLeft: '2px dashed rgba(212, 175, 55, 0.25)',
+                zIndex: 2,
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                paddingTop: 4
+              }}
+            >
+              <span style={{
+                fontSize: 8,
+                fontWeight: 800,
+                color: 'var(--color-dorado)',
+                background: 'rgba(20,20,25,0.85)',
+                border: '1px solid rgba(212,175,55,0.4)',
+                borderRadius: 4,
+                padding: '2px 5px',
+                whiteSpace: 'nowrap',
+                transform: 'translateY(16px)'
+              }}>
+                R{r}
+              </span>
+            </div>
+          );
+        })}
 
         {/* MARCADORES DE EVENTOS */}
         {eventosConNivel.map((ev, i) => {

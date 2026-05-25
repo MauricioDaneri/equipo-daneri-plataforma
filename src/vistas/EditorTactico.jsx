@@ -390,6 +390,16 @@ export default function EditorTactico() {
     timelineRef.current = timeline;
   }, [timeline]);
 
+  // Auto-scroll the sidebar list to keep the selected event in view
+  useEffect(() => {
+    if (eventoSeleccionadoId) {
+      const element = document.getElementById(`ev-list-item-${eventoSeleccionadoId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [eventoSeleccionadoId]);
+
   const [tamanioLapiz, setTamanioLapiz] = useState(4);
   const [objetosDibujo, setObjetosDibujo] = useState([]);
 
@@ -798,6 +808,9 @@ export default function EditorTactico() {
   const timelineRefTemp = useRef([]);
   const herramientaActivaRef = useRef("cursor");
   const colorActivoRef = useRef("#e74c3c");
+  const roundStartsRef = useRef(roundStarts);
+  const totalRoundsRef = useRef(totalRounds);
+  const duracionRoundRef = useRef(duracionRound);
 
   useEffect(() => { 
     videoUrlRef.current = videoUrl; 
@@ -808,6 +821,9 @@ export default function EditorTactico() {
   useEffect(() => { timelineRefTemp.current = timeline; }, [timeline]);
   useEffect(() => { herramientaActivaRef.current = herramientaActiva; }, [herramientaActiva]);
   useEffect(() => { colorActivoRef.current = colorActivo; }, [colorActivo]);
+  useEffect(() => { roundStartsRef.current = roundStarts; }, [roundStarts]);
+  useEffect(() => { totalRoundsRef.current = totalRounds; }, [totalRounds]);
+  useEffect(() => { duracionRoundRef.current = duracionRound; }, [duracionRound]);
 
   const canvasSyncTimeoutRef = useRef(null);
   const enviarActualizacionCanvas = useCallback(() => {
@@ -915,6 +931,14 @@ export default function EditorTactico() {
           payload: { eventos: timelineRefTemp.current },
         });
         window.api.video.enviarMensajeSync({
+          type: 'SESSION_INFO',
+          payload: { 
+            roundStarts: roundStartsRef.current, 
+            totalRounds: totalRoundsRef.current, 
+            duracionRound: duracionRoundRef.current 
+          }
+        });
+        window.api.video.enviarMensajeSync({
           type: 'DRAWING_TOOL_UPDATE',
           payload: { 
             herramientaActiva: herramientaActivaRef.current, 
@@ -1008,6 +1032,16 @@ export default function EditorTactico() {
       });
     }
   }, [herramientaActiva, colorActivo, tamanioLapiz, roundActual]);
+
+  // Sincronizar información de la sesión (rounds) con el visor cuando cambia
+  useEffect(() => {
+    if (window.api && window.api.video && visorDetachadoAbierto) {
+      window.api.video.enviarMensajeSync({
+        type: 'SESSION_INFO',
+        payload: { roundStarts, totalRounds, duracionRound }
+      });
+    }
+  }, [roundStarts, totalRounds, duracionRound, visorDetachadoAbierto]);
 
   // Método auxiliar para calcular round y descanso según la posición del playhead del video
   const calcularRoundYRestoConVideo = useCallback(
@@ -3785,6 +3819,8 @@ export default function EditorTactico() {
               duracion={videoDuration || (videoRef.current && !isNaN(videoRef.current.duration) ? videoRef.current.duration : 0)}
               tiempoActual={currentTime}
               expanded={visorDetachadoAbierto}
+              roundStarts={roundStarts}
+              totalRounds={totalRounds}
               style={{
                 flex: visorDetachadoAbierto ? 1 : 'none',
               }}
@@ -4422,6 +4458,7 @@ export default function EditorTactico() {
                           eventosConNumero.map((ev) => (
                             <motion.div
                               key={ev.id}
+                              id={`ev-list-item-${ev.id}`}
                               onClick={() => {
                                 setEventoSeleccionadoId(ev.id);
                                 if (videoRef.current) {
