@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -20,6 +21,13 @@ import { signOut } from 'firebase/auth'
 export default function BarraLateral() {
   const { usuario, rol } = useAuth()
   const location = useLocation()
+  const [appVersion, setAppVersion] = useState('v1.0.3')
+
+  useEffect(() => {
+    if (window.api?.getVersion) {
+      window.api.getVersion().then(v => setAppVersion(`v${v}`))
+    }
+  }, [])
 
   // Recuperar el ID de la última sesión activa del editor
   const lastSessionId = localStorage.getItem('equipo_daneri_last_active_session_id')
@@ -92,16 +100,22 @@ export default function BarraLateral() {
       <div style={estilos.fondo}>
         <hr style={estilos.divisor} />
         {rol !== 'boxeador' && (
-          <NavLink
-            to="/ajustes"
-            style={({ isActive }) => ({
-              ...estilos.navItem,
-              color: isActive ? 'var(--color-dorado)' : 'var(--color-texto-suave)',
-            })}
-          >
-            <Settings size={18} />
-            <span style={estilos.navEtiqueta}>Ajustes</span>
-          </NavLink>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 16 }}>
+            <NavLink
+              to="/ajustes"
+              style={({ isActive }) => ({
+                ...estilos.navItem,
+                color: isActive ? 'var(--color-dorado)' : 'var(--color-texto-suave)',
+                flex: 1
+              })}
+            >
+              <Settings size={18} />
+              <span style={estilos.navEtiqueta}>Ajustes</span>
+            </NavLink>
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--color-texto-suave)', opacity: 0.65, fontWeight: 700 }}>
+              {appVersion}
+            </span>
+          </div>
         )}
 
         {/* Perfil Usuario Real (Google Auth) */}

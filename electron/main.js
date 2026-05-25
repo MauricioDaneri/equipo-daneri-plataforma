@@ -354,6 +354,7 @@ ipcMain.handle('ventana:maximizar', () => {
   mainWindow.isMaximized() ? mainWindow.restore() : mainWindow.maximize()
 })
 ipcMain.handle('ventana:cerrar', () => mainWindow.close())
+ipcMain.handle('app:getVersion', () => app.getVersion())
 
 // ── IPC: Auto-updater ──────────────────────────────────────────────────────
 autoUpdater.on('update-available', () => {
