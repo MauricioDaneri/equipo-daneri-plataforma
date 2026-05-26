@@ -148,7 +148,7 @@ export default function Ajustes() {
       console.error('[Cloud Sync] Error durante la sincronización:', err)
       mostrarAlerta({
         titulo: "Error de Sincronización",
-        mensaje: "No se pudo completar la sincronización con la nube. Revisa tu conexión a internet o los logs de error.",
+        mensaje: err.message || "No se pudo completar la sincronización con la nube. Revisa tu conexión a internet o los logs de error.",
         tipo: "peligro"
       })
     } finally {

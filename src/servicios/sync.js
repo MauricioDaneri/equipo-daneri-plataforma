@@ -15,6 +15,47 @@ import { collection, doc, setDoc, getDocs, writeBatch, waitForPendingWrites } fr
 let _syncEnProgreso = false
 export function isSyncEnProgreso() { return _syncEnProgreso }
 
+// Envuelve una promesa en un control de tiempo máximo (timeout)
+function promiseWithTimeout(promise, timeoutMs, errorMsg) {
+  let timeoutId
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(errorMsg))
+    }, timeoutMs)
+  })
+  
+  return Promise.race([
+    promise.then((res) => {
+      clearTimeout(timeoutId)
+      return res
+    }),
+    timeoutPromise
+  ])
+}
+
+// Verifica si hay conexión activa a Internet y si los servidores de Firestore están accesibles
+export async function verificarConexionFirestore() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error('No hay conexión a Internet. Por favor, verifica tu red e intenta nuevamente.')
+  }
+
+  // Realizar un ping corto a la API de Firestore con timeout
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3500)
+    
+    await fetch('https://firestore.googleapis.com', {
+      method: 'GET',
+      mode: 'no-cors',
+      signal: controller.signal
+    })
+    clearTimeout(timeoutId)
+  } catch (err) {
+    throw new Error('No se pudo establecer conexión con los servidores de Firestore. La red es inestable o está desconectada.')
+  }
+}
+
+
 // Función para comprimir una imagen base64 de forma asíncrona usando canvas
 async function comprimirBase64(base64Str, maxWidth = 256, maxHeight = 256) {
   if (!base64Str || typeof window === 'undefined' || !globalThis.Image || !base64Str.startsWith('data:image')) {
@@ -99,6 +140,9 @@ export async function sincronizarLocalHaciaNube(uid) {
   try {
     console.log('[Sync] Iniciando sincronización de local a la nube para UID:', uid)
 
+    // Verificar conectividad activa antes de continuar
+    await verificarConexionFirestore()
+
     // Obtener datos locales de las tablas clave
     const boxeadores = await db.boxeadores.toArray()
     const sesiones = await db.sesiones.toArray()
@@ -156,11 +200,12 @@ export async function sincronizarLocalHaciaNube(uid) {
 
           await setDocConRetry(docRef, itemToSync, nombreColeccion, MAX_RETRIES)
           await new Promise(resolve => setTimeout(resolve, delayMs)) // Retardo entre documentos
-          try {
-            await waitForPendingWrites(dbFirestore)
-          } catch(e) {
-            console.warn('[Sync] Advertencia esperando pending writes (individual):', e)
-          }
+          // Esperar confirmación de escritura con timeout de 5 segundos
+          await promiseWithTimeout(
+            waitForPendingWrites(dbFirestore),
+            5000,
+            `[Sync] Límite de tiempo excedido esperando respuesta del servidor de Firestore al guardar ${nombreColeccion}. Conexión inestable.`
+          )
         }
       } else {
         // Subida eficiente por writeBatch para grandes cantidades de documentos ligeros (eventos)
@@ -179,11 +224,12 @@ export async function sincronizarLocalHaciaNube(uid) {
           if (contador === sizeLimit) {
             await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
             await new Promise(resolve => setTimeout(resolve, delayMs))
-            try {
-              await waitForPendingWrites(dbFirestore)
-            } catch(e) {
-              console.warn('[Sync] Advertencia esperando pending writes (batch):', e)
-            }
+            // Esperar confirmación de lote con timeout de 6 segundos
+            await promiseWithTimeout(
+              waitForPendingWrites(dbFirestore),
+              6000,
+              `[Sync] Límite de tiempo excedido esperando confirmación del lote de ${nombreColeccion}. Conexión inestable.`
+            )
             batch = writeBatch(dbFirestore)
             contador = 0
           }
@@ -192,9 +238,12 @@ export async function sincronizarLocalHaciaNube(uid) {
         if (contador > 0) {
           await commitBatchConRetry(batch, nombreColeccion, MAX_RETRIES)
           await new Promise(resolve => setTimeout(resolve, delayMs))
-          try {
-            await waitForPendingWrites(dbFirestore)
-          } catch(e) {}
+          // Esperar lote final con timeout
+          await promiseWithTimeout(
+            waitForPendingWrites(dbFirestore),
+            6000,
+            `[Sync] Límite de tiempo excedido esperando confirmación del lote final de ${nombreColeccion}.`
+          )
         }
       }
     }
@@ -256,6 +305,9 @@ export async function sincronizarNubeHaciaLocal(uid) {
   if (!uid) throw new Error('Se requiere el UID del usuario para descargar los datos de la nube.')
 
   console.log('[Sync] Sincronización de nube a local para UID:', uid)
+
+  // Verificar conectividad activa antes de descargar
+  await verificarConexionFirestore()
 
   const descargarColeccion = async (nombreColeccion) => {
     const colRef = collection(dbFirestore, 'usuarios', uid, nombreColeccion)
