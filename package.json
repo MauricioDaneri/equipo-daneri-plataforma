@@ -1,5 +1,5 @@
 {
-  "name": "equipo-daneri-plataforma",
+  "name": "plataforma-equipo-daneri",
   "version": "1.2.2",
   "description": "Plataforma de Análisis — Equipo Daneri",
   "main": "electron/main.js",
@@ -12,7 +12,7 @@
     "release": "node scripts/release.js",
     "preview": "vite preview",
     "test": "vitest run",
-    "audit": "node C:\\Users\\mauri\\.gemini\\antigravity\\brain\\fcfa68e9-6147-4461-aaeb-4b3687f5a00f\\scratch\\search_all.js"
+    "audit": "node scripts/auditor.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
