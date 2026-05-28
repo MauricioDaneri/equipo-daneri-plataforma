@@ -20,7 +20,7 @@ export default function Inicio() {
   const eventosDb = useLiveQuery(() => db.eventos.toArray())
 
   // Total dinámico
-  const totalBoxeadores = boxeadoresDb ? boxeadoresDb.length : 0
+  const totalBoxeadores = boxeadoresDb ? boxeadoresDb.filter(b => !b.archivado).length : 0
   const totalSesiones = sesionesDb ? sesionesDb.length : 0
 
   // --- Procesamiento de Datos Reales ---
