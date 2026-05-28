@@ -45,6 +45,18 @@ import { useSpeechControl } from "../hooks/useSpeechControl";
 import { useModal } from "../context/ModalContext";
 import VideoTimelineOverlay from "../components/editor/VideoTimelineOverlay";
 import MapaImpactos from "../components/graficos/MapaImpactos";
+import PrecisionEditModal from "../components/editor/PrecisionEditModal";
+import TactileKeyboard from "../components/editor/TactileKeyboard";
+import SidebarTimeline from "../components/editor/SidebarTimeline";
+import SidebarEstadisticas from "../components/editor/SidebarEstadisticas";
+import SidebarAsistenteIA from "../components/editor/SidebarAsistenteIA";
+import SidebarVoz from "../components/editor/SidebarVoz";
+import DrawingToolbar from "../components/editor/DrawingToolbar";
+import VideoCanvas from "../components/editor/VideoCanvas";
+import CustomDropdown from "../components/ui/CustomDropdown";
+import SessionHeader from "../components/editor/SessionHeader";
+import VideoPlaybackControls from "../components/editor/VideoPlaybackControls";
+import useCanvasState from "../hooks/editor/useCanvasState";
 import { clasificarPerfiles } from "../utils/perfilesBoxeo";
 import {
   analizarFrameConOllama,
@@ -101,194 +113,6 @@ const formatearTecla = (code) => {
   return code;
 };
 
-function CustomDropdown({ label, value, onChange, boxeadores, cornerColor }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedBoxer = boxeadores.find(
-    (b) => b.id.toString() === value?.toString(),
-  );
-
-  return (
-    <div style={{ position: "relative" }}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          background: "var(--color-superficie-2)",
-          padding: "6px 14px",
-          borderRadius: 20,
-          border: `1px solid ${isOpen ? cornerColor : "var(--color-borde)"}`,
-          boxShadow: isOpen ? `0 0 8px ${cornerColor}30` : "none",
-          color: "var(--color-texto)",
-          cursor: "pointer",
-          transition: "all 0.25s ease",
-          outline: "none",
-          minWidth: 180,
-          textAlign: "left",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              backgroundColor: cornerColor,
-              boxShadow: `0 0 5px ${cornerColor}`,
-            }}
-          />
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span
-              style={{
-                fontSize: 8,
-                color: "var(--color-texto-suave)",
-                textTransform: "uppercase",
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                lineHeight: 1,
-              }}
-            >
-              {label}
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>
-              {selectedBoxer ? selectedBoxer.nombre : "Seleccionar..."}
-            </span>
-          </div>
-        </div>
-        <ChevronDown
-          size={12}
-          style={{
-            transform: isOpen ? "rotate(180deg)" : "rotate(0)",
-            transition: "transform 0.2s ease",
-            color: "var(--color-texto-suave)",
-          }}
-        />
-      </button>
-
-      {isOpen && (
-        <>
-          <div
-            onClick={() => setIsOpen(false)}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 998,
-            }}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.96 }}
-            transition={{ duration: 0.15 }}
-            style={{
-              position: "absolute",
-              top: "115%",
-              left: 0,
-              right: 0,
-              background: "rgba(20, 20, 20, 0.96)",
-              backdropFilter: "blur(16px)",
-              border: "1px solid var(--color-borde)",
-              borderRadius: 10,
-              padding: 4,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
-              zIndex: 999,
-              maxHeight: 220,
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <div
-              onClick={() => {
-                onChange("");
-                setIsOpen(false);
-              }}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 6,
-                cursor: "pointer",
-                fontSize: 11,
-                color: "var(--color-texto-suave)",
-                transition: "background 0.2s",
-                background: !value ? "rgba(255,255,255,0.04)" : "transparent",
-              }}
-              onMouseEnter={(e) =>
-                (e.target.style.background = "rgba(255,255,255,0.06)")
-              }
-              onMouseLeave={(e) =>
-                (e.target.style.background = !value
-                  ? "rgba(255,255,255,0.04)"
-                  : "transparent")
-              }
-            >
-              Seleccionar Boxeador...
-            </div>
-            {boxeadores.map((b) => {
-              const isSel = b.id.toString() === value?.toString();
-              return (
-                <div
-                  key={b.id}
-                  onClick={() => {
-                    onChange(b.id.toString());
-                    setIsOpen(false);
-                  }}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                    background: isSel ? `${cornerColor}15` : "transparent",
-                    borderLeft: `2.5px solid ${isSel ? cornerColor : "transparent"}`,
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = isSel
-                      ? `${cornerColor}25`
-                      : "rgba(255,255,255,0.04)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = isSel
-                      ? `${cornerColor}15`
-                      : "transparent")
-                  }
-                >
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: isSel
-                        ? "var(--color-texto)"
-                        : "var(--color-texto-suave)",
-                    }}
-                  >
-                    {b.nombre}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 9,
-                      color: "var(--color-texto-muted)",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {b.categoriaPeso} {b.estancia ? `· ${b.estancia}` : ""}
-                  </span>
-                </div>
-              );
-            })}
-          </motion.div>
-        </>
-      )}
-    </div>
-  );
-}
 
 // Helper puro para calcular el asalto (round) de un evento en base a su timestamp y la configuración
 const obtenerRoundDeEvento = (ev, starts, total) => {
@@ -324,7 +148,9 @@ export default function EditorTactico() {
   // Datos de Boxeadores y Configuración de la DB
   const boxeadoresDb = useLiveQuery(() => db.boxeadores.toArray()) || [];
   const configuracion = useLiveQuery(() => db.configuracion.get(1));
-  const hotkeys = { ...defaultHotkeys, ...(configuracion?.hotkeys || {}) };
+  const hotkeys = useMemo(() => {
+    return { ...defaultHotkeys, ...(configuracion?.hotkeys || {}) };
+  }, [configuracion]);
 
   // Ajustes de IA persistentes
   useEffect(() => {
@@ -380,13 +206,11 @@ export default function EditorTactico() {
   const [bucleRango, setBucleRango] = useState(null); // { start, end } de bucle táctico de 10s around marker
   const [bucleEventoId, setBucleEventoId] = useState(null); // ID del evento que está en bucle táctico
 
-  // Estados de Dibujo
-  const [canvasInstance, setCanvasInstance] = useState(null);
-  const [herramientaActiva, setHerramientaActiva] = useState("cursor");
-  const [colorActivo, setColorActivo] = useState(COLORES[0]);
   const [teclaActiva, setTeclaActiva] = useState(null);
   const [capaDibujoVisible, setCapaDibujoVisible] = useState(true);
   const [panelActivo, setPanelActivo] = useState("timeline");
+  const [panelAuxiliar, setPanelAuxiliar] = useState(null); // null | 'ia' | 'voz'
+  const [filtroAislamiento, setFiltroAislamiento] = useState(null);
   const [sidebarExpandido, setSidebarExpandido] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
@@ -397,10 +221,12 @@ export default function EditorTactico() {
   const [timeline, setTimeline] = useState([]);
   const timelineRef = useRef([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState(null);
+  const [eventoMapeoGuiadoId, setEventoMapeoGuiadoId] = useState(null);
   const eventoSeleccionadoIdRef = useRef(null);
-  const fabricCanvasRef = useRef(null);
   const isHistoryLoadingRef = useRef(false);
   const isSyncingFromViewerRef = useRef(false);
+
+  const keyboardStateRef = useRef();
 
   useEffect(() => {
     eventoSeleccionadoIdRef.current = eventoSeleccionadoId;
@@ -410,17 +236,24 @@ export default function EditorTactico() {
     timelineRef.current = timeline;
   }, [timeline]);
 
-  // Auto-scroll the sidebar list to keep the selected event in view
+  // Auto-scroll the sidebar list to keep the selected event in view and redirect tab
   useEffect(() => {
     if (eventoSeleccionadoId) {
-      const element = document.getElementById(`ev-list-item-${eventoSeleccionadoId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      // Redirigir al panel de la línea de tiempo para asegurar que se visualice, salvo que estemos en el mapa o estadísticas
+      if (panelActivo !== "mapa" && panelActivo !== "stats") {
+        setPanelActivo("timeline");
       }
+      
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`ev-list-item-${eventoSeleccionadoId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 80);
+      return () => clearTimeout(timer);
     }
-  }, [eventoSeleccionadoId]);
+  }, [eventoSeleccionadoId, panelActivo]);
 
-  const [tamanioLapiz, setTamanioLapiz] = useState(4);
   const [objetosDibujo, setObjetosDibujo] = useState([]);
   const [terminoBusqueda, setTerminoBusqueda] = useState("");
   const [filtroRound, setFiltroRound] = useState("todos");
@@ -482,8 +315,12 @@ export default function EditorTactico() {
       });
     }
 
+    if (filtroAislamiento) {
+      filtrados = filtrados.filter(ev => ev.tipo === filtroAislamiento);
+    }
+
     return filtrados;
-  }, [eventosConNumero, filtroRound, terminoBusqueda, boxeadoresDb, boxeadorRojoId, boxeadorAzulId, roundStarts, totalRounds]);
+  }, [eventosConNumero, filtroRound, terminoBusqueda, boxeadoresDb, boxeadorRojoId, boxeadorAzulId, roundStarts, totalRounds, filtroAislamiento]);
 
   const timelineFiltradaParaStats = useMemo(() => {
     if (filtroEstadisticasRound === "todos") return timeline;
@@ -666,8 +503,12 @@ export default function EditorTactico() {
     setHistorialFuturo([]);
   }, []);
 
-  const [visorDetachadoAbierto, setVisorDetachadoAbierto] = useState(false);
+  const [visorDetachadoAbierto, setVisorDetachadoAbierto] = useState(() => {
+    const val = localStorage.getItem("visorDetachadoAbierto");
+    return val === null ? true : val === "true";
+  });
   const [panelAccionesDesacoplado, setPanelAccionesDesacoplado] = useState(false);
+  const [panelDibujoVisible, setPanelDibujoVisible] = useState(false);
 
   const abrirVisorDetachado = async () => {
     if (window?.api?.video) {
@@ -676,10 +517,14 @@ export default function EditorTactico() {
           await window.api.video.cerrarVisorDetachado();
         }
         setVisorDetachadoAbierto(false);
+        localStorage.setItem("visorDetachadoAbierto", "false");
       } else {
         if (window.api.video.abrirVisorDetachado) {
           const result = await window.api.video.abrirVisorDetachado();
-          if (result?.ok) setVisorDetachadoAbierto(true);
+          if (result?.ok) {
+            setVisorDetachadoAbierto(true);
+            localStorage.setItem("visorDetachadoAbierto", "true");
+          }
         }
       }
     }
@@ -876,19 +721,6 @@ export default function EditorTactico() {
   const totalRoundsRef = useRef(totalRounds);
   const duracionRoundRef = useRef(duracionRound);
 
-  useEffect(() => { 
-    videoUrlRef.current = videoUrl; 
-    if (!videoUrl) setVideoDuration(0);
-  }, [videoUrl]);
-  useEffect(() => { videoFileRef.current = videoFile; }, [videoFile]);
-  useEffect(() => { roundActualRef.current = roundActual; }, [roundActual]);
-  useEffect(() => { timelineRefTemp.current = timeline; }, [timeline]);
-  useEffect(() => { herramientaActivaRef.current = herramientaActiva; }, [herramientaActiva]);
-  useEffect(() => { colorActivoRef.current = colorActivo; }, [colorActivo]);
-  useEffect(() => { roundStartsRef.current = roundStarts; }, [roundStarts]);
-  useEffect(() => { totalRoundsRef.current = totalRounds; }, [totalRounds]);
-  useEffect(() => { duracionRoundRef.current = duracionRound; }, [duracionRound]);
-
   const canvasSyncTimeoutRef = useRef(null);
   const enviarActualizacionCanvas = useCallback(() => {
     if (isSyncingFromViewerRef.current) return;
@@ -933,6 +765,40 @@ export default function EditorTactico() {
     }
   }, []);
 
+  const {
+    herramientaActiva,
+    setHerramientaActiva,
+    colorActivo,
+    setColorActivo,
+    tamanioLapiz,
+    setTamanioLapiz,
+    canvasInstance,
+    fabricCanvasRef,
+  } = useCanvasState({
+    videoRef,
+    wrapperRef,
+    canvasRef,
+    pushStateToHistory,
+    actualizarObjetosDibujo,
+    enviarActualizacionCanvas,
+    isHistoryLoadingRef,
+    defaultColor: COLORES[0],
+  });
+
+  // Efectos de sincronización (declarados abajo de useCanvasState para evitar TDZ)
+  useEffect(() => { 
+    videoUrlRef.current = videoUrl; 
+    if (!videoUrl) setVideoDuration(0);
+  }, [videoUrl]);
+  useEffect(() => { videoFileRef.current = videoFile; }, [videoFile]);
+  useEffect(() => { roundActualRef.current = roundActual; }, [roundActual]);
+  useEffect(() => { timelineRefTemp.current = timeline; }, [timeline]);
+  useEffect(() => { herramientaActivaRef.current = herramientaActiva; }, [herramientaActiva]);
+  useEffect(() => { colorActivoRef.current = colorActivo; }, [colorActivo]);
+  useEffect(() => { roundStartsRef.current = roundStarts; }, [roundStarts]);
+  useEffect(() => { totalRoundsRef.current = totalRounds; }, [totalRounds]);
+  useEffect(() => { duracionRoundRef.current = duracionRound; }, [duracionRound]);
+
   const toggleVisibilidadObjeto = useCallback((id) => {
     if (fabricCanvasRef.current) {
       const obj = fabricCanvasRef.current.getObjects().find(o => o.id === id);
@@ -974,6 +840,10 @@ export default function EditorTactico() {
 
   useEffect(() => {
     if (!window.api || !window.api.video) return;
+
+    if (visorDetachadoAbierto && window.api.video.abrirVisorDetachado) {
+      window.api.video.abrirVisorDetachado();
+    }
 
     // Escuchar mensajes del visor desacoplado
     const limpiarListener = window.api.video.onMensajeDesdeViewer((message) => {
@@ -1021,6 +891,7 @@ export default function EditorTactico() {
           });
         }
         setVisorDetachadoAbierto(true);
+        localStorage.setItem('visorDetachadoAbierto', 'true');
       }
       if (type === 'SEEK_FROM_VIEWER') {
         if (videoRef.current) {
@@ -1047,6 +918,7 @@ export default function EditorTactico() {
 
     const limpiarVisorCerrado = window.api.video.onVisorCerrado(() => {
       setVisorDetachadoAbierto(false);
+      localStorage.setItem('visorDetachadoAbierto', 'false');
     });
 
     return () => {
@@ -1506,221 +1378,6 @@ export default function EditorTactico() {
     }
   };
 
-  // --- Fabric.js Initialization ---
-  useEffect(() => {
-    if (!canvasRef.current || !wrapperRef.current) return;
-
-    let canvas = null;
-
-    const initCanvas = () => {
-      if (!wrapperRef.current) return;
-      const rect = wrapperRef.current.getBoundingClientRect();
-      
-      canvas = new fabric.Canvas(canvasRef.current, {
-        width: rect.width || 800,
-        height: rect.height || 450,
-        isDrawingMode: false,
-        selection: true,
-      });
-
-      canvas.freeDrawingBrush.color = colorActivo;
-      canvas.freeDrawingBrush.width = 3;
-      setCanvasInstance(canvas);
-      fabricCanvasRef.current = canvas;
-
-      // Add drawing event listeners to canvas
-      canvas.on("object:added", () => {
-        if (!isHistoryLoadingRef.current) {
-          pushStateToHistory();
-        }
-        actualizarObjetosDibujo();
-      });
-      canvas.on("object:modified", () => {
-        if (!isHistoryLoadingRef.current) {
-          pushStateToHistory();
-        }
-        actualizarObjetosDibujo();
-      });
-      canvas.on("object:removed", () => {
-        if (!isHistoryLoadingRef.current) {
-          pushStateToHistory();
-        }
-        actualizarObjetosDibujo();
-      });
-      canvas.on("after:render", () => {
-        enviarActualizacionCanvas();
-      });
-
-      const handleResize = () => {
-        if (wrapperRef.current && canvas && videoRef.current && videoRef.current.videoWidth) {
-          const rect = wrapperRef.current.getBoundingClientRect();
-          const videoRatio = videoRef.current.videoWidth / videoRef.current.videoHeight;
-          const containerRatio = rect.width / rect.height;
-
-          let w, h;
-          if (containerRatio > videoRatio) {
-            h = rect.height;
-            w = h * videoRatio;
-          } else {
-            w = rect.width;
-            h = w / videoRatio;
-          }
-
-          canvas.setWidth(w);
-          canvas.setHeight(h);
-          
-          if (canvas.wrapperEl) {
-            canvas.wrapperEl.style.position = 'absolute';
-            canvas.wrapperEl.style.left = `${(rect.width - w) / 2}px`;
-            canvas.wrapperEl.style.top = `${(rect.height - h) / 2}px`;
-          }
-          canvas.renderAll();
-        }
-      };
-      
-      // Llamar al resize inicial para acomodar el canvas si el video ya está listo
-      setTimeout(handleResize, 100);
-      window.addEventListener("resize", handleResize);
-      // También reaccionar cuando el video dispara loadedmetadata
-      if (videoRef.current) {
-        videoRef.current.addEventListener('loadedmetadata', handleResize);
-      }
-
-      // Guardar el handler para limpieza
-      canvas._handleResize = handleResize;
-    };
-
-    const timeout = setTimeout(initCanvas, 100);
-
-    return () => {
-      clearTimeout(timeout);
-      if (canvas) {
-        window.removeEventListener("resize", canvas._handleResize);
-        if (videoRef.current) {
-          videoRef.current.removeEventListener('loadedmetadata', canvas._handleResize);
-        }
-        try {
-          canvas.dispose();
-        } catch (e) {}
-      }
-    };
-  }, [pushStateToHistory]);
-
-  // --- Brush Settings y Manejo de Textos/Formas ---
-  useEffect(() => {
-    if (!canvasInstance) return;
-
-    canvasInstance.isDrawingMode = herramientaActiva === "lapiz";
-    canvasInstance.freeDrawingBrush.color = colorActivo;
-
-    if (herramientaActiva === "cursor") {
-      canvasInstance.defaultCursor = "default";
-    } else {
-      canvasInstance.defaultCursor = "crosshair";
-    }
-
-    // Limpiar eventos previos si los hay
-    canvasInstance.off('mouse:down');
-    canvasInstance.off('mouse:move');
-    canvasInstance.off('mouse:up');
-
-    let isDrawingShape = false;
-    let startX = 0;
-    let startY = 0;
-    let currentShape = null;
-
-    const onMouseDown = (o) => {
-      if (herramientaActiva === 'lapiz' || herramientaActiva === 'cursor') return;
-      if (o.target && herramientaActiva !== 'texto') return; // No dibujar forma si hizo click en un objeto existente
-
-      const pointer = canvasInstance.getPointer(o.e);
-      isDrawingShape = true;
-      startX = pointer.x;
-      startY = pointer.y;
-
-      if (herramientaActiva === 'texto') {
-        if (o.target && o.target.type === 'i-text') return; // Dejar que el usuario edite el texto existente
-        const text = new fabric.IText('Texto', {
-          left: startX,
-          top: startY,
-          fill: colorActivo,
-          fontSize: 24,
-          fontFamily: 'Inter',
-        });
-        canvasInstance.add(text);
-        canvasInstance.setActiveObject(text);
-        text.enterEditing();
-        text.selectAll();
-        isDrawingShape = false; 
-        setHerramientaActiva('cursor'); // Auto-switch a cursor para editar tranquilo
-      } else if (herramientaActiva === 'linea') {
-        currentShape = new fabric.Line([startX, startY, startX, startY], {
-          stroke: colorActivo,
-          strokeWidth: 4,
-          selectable: true,
-          evented: true,
-        });
-        canvasInstance.add(currentShape);
-      } else if (herramientaActiva === 'circulo') {
-        currentShape = new fabric.Circle({
-          left: startX,
-          top: startY,
-          radius: 1,
-          stroke: colorActivo,
-          strokeWidth: 4,
-          fill: 'transparent',
-          originX: 'center',
-          originY: 'center',
-          selectable: true,
-          evented: true,
-        });
-        canvasInstance.add(currentShape);
-      }
-    };
-
-    const onMouseMove = (o) => {
-      if (!isDrawingShape || !currentShape) return;
-      const pointer = canvasInstance.getPointer(o.e);
-
-      if (herramientaActiva === 'linea') {
-        currentShape.set({ x2: pointer.x, y2: pointer.y });
-      } else if (herramientaActiva === 'circulo') {
-        const radius = Math.max(Math.abs(pointer.x - startX), Math.abs(pointer.y - startY));
-        currentShape.set({ radius: radius });
-      }
-      canvasInstance.renderAll();
-    };
-
-    const onMouseUp = () => {
-      if (!isDrawingShape) return;
-      isDrawingShape = false;
-      currentShape = null;
-      if (!isHistoryLoadingRef.current) {
-        pushStateToHistory();
-      }
-    };
-
-    canvasInstance.on('mouse:down', onMouseDown);
-    canvasInstance.on('mouse:move', onMouseMove);
-    canvasInstance.on('mouse:up', onMouseUp);
-
-  }, [herramientaActiva, colorActivo, canvasInstance, pushStateToHistory]);
-
-  // --- Actualizar color de objeto seleccionado ---
-  useEffect(() => {
-    if (!canvasInstance || !colorActivo) return;
-    const activeObject = canvasInstance.getActiveObject();
-    if (activeObject) {
-      if (activeObject.type === 'i-text' || activeObject.type === 'text') {
-        activeObject.set('fill', colorActivo);
-      } else {
-        activeObject.set('stroke', colorActivo);
-      }
-      canvasInstance.renderAll();
-      pushStateToHistory();
-    }
-  }, [colorActivo, canvasInstance, pushStateToHistory]);
-
   // --- Video Playback ---
   const togglePlay = () => {
     if (videoRef.current) {
@@ -1791,7 +1448,6 @@ export default function EditorTactico() {
         }
       }
 
-      console.log("[EditorTactico] handleTimeUpdate: currentTime =", t, "duration =", videoRef.current.duration);
       setCurrentTime(t);
       const dur = videoRef.current.duration;
       if (dur && !isNaN(dur) && dur !== videoDuration) {
@@ -1850,7 +1506,10 @@ export default function EditorTactico() {
     setTimeout(() => setTeclaActiva(null), 200);
     // Si el panel de mapa está activo, activar modo mapeo guiado inmediatamente
     if (panelActivo === 'mapa') {
-      setTimeout(() => setEventoSeleccionadoId(nuevoEvento.id), 50);
+      setTimeout(() => {
+        setEventoSeleccionadoId(nuevoEvento.id);
+        setEventoMapeoGuiadoId(nuevoEvento.id);
+      }, 50);
     }
   };
 
@@ -2660,6 +2319,19 @@ export default function EditorTactico() {
     });
   };
 
+  keyboardStateRef.current = {
+    isPlaying,
+    esquinaDestino,
+    hotkeys,
+    handleUndo,
+    handleRedo,
+    registrarEvento,
+    togglePlay,
+    saltar,
+    setHerramientaActiva,
+    setEsquinaDestino
+  };
+
   // --- Keyboard Shortcuts & Hotkeys ---
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -2667,9 +2339,35 @@ export default function EditorTactico() {
       if (
         e.target.tagName === "INPUT" ||
         e.target.tagName === "TEXTAREA" ||
-        e.target.tagName === "SELECT"
+        e.target.tagName === "SELECT" ||
+        e.target.isContentEditable
       )
         return;
+
+      const {
+        isPlaying,
+        esquinaDestino,
+        hotkeys,
+        handleUndo,
+        handleRedo,
+        registrarEvento,
+        togglePlay,
+        saltar,
+        setHerramientaActiva,
+        setEsquinaDestino
+      } = keyboardStateRef.current;
+
+      const keyLower = e.key.toLowerCase();
+      const codeMatches = (hkVal) => {
+        if (!hkVal) return false;
+        // Match exact physical code (e.code e.g. "KeyJ")
+        if (e.code === hkVal) return true;
+        // Fallback for Spanish or multi-layout keyboard triggers (e.key e.g. "j" or "J")
+        if (hkVal.startsWith("Key") && keyLower === hkVal.replace("Key", "").toLowerCase()) return true;
+        if (hkVal.startsWith("Digit") && keyLower === hkVal.replace("Digit", "").toLowerCase()) return true;
+        if (e.key === hkVal || keyLower === hkVal.toLowerCase()) return true;
+        return false;
+      };
 
       const registrar = (tipo) => {
         e.preventDefault();
@@ -2677,91 +2375,68 @@ export default function EditorTactico() {
       };
 
       // Ctrl + Z / Y
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      if ((e.ctrlKey || e.metaKey) && keyLower === "z") {
         e.preventDefault();
         handleUndo();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+      if ((e.ctrlKey || e.metaKey) && keyLower === "y") {
         e.preventDefault();
         handleRedo();
         return;
       }
 
-      switch (e.code) {
-        case hotkeys.PlayPause:
-          e.preventDefault();
-          togglePlay();
-          break;
-        case hotkeys.Atras:
-          e.preventDefault();
-          saltar(-2);
-          break;
-        case hotkeys.Adelante:
-          e.preventDefault();
-          saltar(2);
-          break;
-        case hotkeys.Cursor:
-          e.preventDefault();
-          setHerramientaActiva("cursor");
-          break;
-        case hotkeys.Lapiz:
-          e.preventDefault();
-          setHerramientaActiva("lapiz");
-          break;
-
-        case hotkeys.RinconRojo:
-          e.preventDefault();
-          setEsquinaDestino("roja");
-          break;
-        case hotkeys.RinconAzul:
-          e.preventDefault();
-          setEsquinaDestino("azul");
-          break;
-
-        case hotkeys.Jab:
-          registrar("Jab");
-          break;
-        case hotkeys.Recto:
-          registrar("Recto");
-          break;
-        case hotkeys.Cross:
-          registrar("Cross");
-          break;
-        case hotkeys.Gancho:
-          registrar("Gancho");
-          break;
-        case hotkeys.Uppercut:
-          registrar("Uppercut");
-          break;
-        case hotkeys.Swing:
-          registrar("Swing");
-          break;
-
-        case hotkeys.Finta:
-          registrar("Finta");
-          break;
-        case hotkeys.Esquiva:
-          registrar("Esquiva");
-          break;
-        case hotkeys.Bloqueo:
-          registrar("Bloqueo");
-          break;
-        case hotkeys.Clinch:
-          registrar("Clinch");
-          break;
-        case hotkeys.Pivoteo:
-          registrar("Pivoteo");
-          break;
-        case hotkeys["Marca General"]:
-          registrar("Marca General");
-          break;
+      if (codeMatches(hotkeys.PlayPause)) {
+        e.preventDefault();
+        togglePlay();
+      } else if (codeMatches(hotkeys.Atras)) {
+        e.preventDefault();
+        saltar(-2);
+      } else if (codeMatches(hotkeys.Adelante)) {
+        e.preventDefault();
+        saltar(2);
+      } else if (codeMatches(hotkeys.Cursor)) {
+        e.preventDefault();
+        setHerramientaActiva("cursor");
+      } else if (codeMatches(hotkeys.Lapiz)) {
+        e.preventDefault();
+        setHerramientaActiva("lapiz");
+      } else if (codeMatches(hotkeys.RinconRojo)) {
+        e.preventDefault();
+        setEsquinaDestino("roja");
+      } else if (codeMatches(hotkeys.RinconAzul)) {
+        e.preventDefault();
+        setEsquinaDestino("azul");
+      } else if (codeMatches(hotkeys.Jab)) {
+        registrar("Jab");
+      } else if (codeMatches(hotkeys.Recto)) {
+        registrar("Recto");
+      } else if (codeMatches(hotkeys.Cross)) {
+        registrar("Cross");
+      } else if (codeMatches(hotkeys.Gancho)) {
+        registrar("Gancho");
+      } else if (codeMatches(hotkeys.Uppercut)) {
+        registrar("Uppercut");
+      } else if (codeMatches(hotkeys.Swing)) {
+        registrar("Swing");
+      } else if (codeMatches(hotkeys.Finta)) {
+        registrar("Finta");
+      } else if (codeMatches(hotkeys.Esquiva)) {
+        registrar("Esquiva");
+      } else if (codeMatches(hotkeys.Bloqueo)) {
+        registrar("Bloqueo");
+      } else if (codeMatches(hotkeys.Clinch)) {
+        registrar("Clinch");
+      } else if (codeMatches(hotkeys.Pivoteo)) {
+        registrar("Pivoteo");
+      } else if (codeMatches(hotkeys["Marca General"])) {
+        registrar("Marca General");
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPlaying, esquinaDestino, hotkeys, handleUndo, handleRedo]);
+  }, []);
 
   useEffect(() => {
     if (!eventoAEditar) return;
@@ -2861,578 +2536,50 @@ export default function EditorTactico() {
       )}
 
       {/* TOP HEADER - Hidden in Clean Mode */}
-      {!analisisLimpio && (
-        <header style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
-          {/* Fila 1: Título y Botones Generales */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-              <h1 style={{ ...estilos.tituloSeccion, margin: 0 }}>EDITOR TÁCTICO</h1>
-              <button
-                className="boton-secundario"
-                style={{ padding: "4px 8px", fontSize: 11 }}
-                onClick={() =>
-                  window.open(
-                    `/#/panel-control/${id || "nuevo"}`,
-                    "_blank",
-                    "width=450,height=800,menubar=no,toolbar=no",
-                  )
-                }
-                title="Abrir panel en segundo monitor"
-              >
-                <ExternalLink size={14} /> Desacoplar Panel
-              </button>
-
-              {/* Undo / Redo controls */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 4,
-                  background: "var(--color-superficie)",
-                  borderRadius: 6,
-                  padding: 2,
-                  border: "1px solid var(--color-borde)",
-                }}
-              >
-                <button
-                  onClick={handleUndo}
-                  disabled={historialPasado.length === 0}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color:
-                      historialPasado.length > 0
-                        ? "var(--color-texto)"
-                        : "var(--color-texto-muted)",
-                    cursor: "pointer",
-                    width: 28,
-                    height: 28,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  title="Deshacer (Ctrl+Z)"
-                >
-                  <Undo size={14} />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={historialFuturo.length === 0}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color:
-                      historialFuturo.length > 0
-                        ? "var(--color-texto)"
-                        : "var(--color-texto-muted)",
-                    cursor: "pointer",
-                    width: 28,
-                    height: 28,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  title="Rehacer (Ctrl+Y)"
-                >
-                  <Redo size={14} />
-                </button>
-              </div>
-
-              {/* Manual/Ayuda button */}
-              <button
-                onClick={() => {
-                  setMostrarManual(true);
-                  setManualTab("timeline");
-                }}
-                className="boton-secundario"
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  display: "flex",
-                  gap: 6,
-                  alignItems: "center",
-                  borderColor: "var(--color-texto-muted)",
-                }}
-                title="Manual del Analista Táctico"
-              >
-                <HelpCircle size={12} /> Ayuda Táctica
-              </button>
-
-              {/* Clean analysis mode button */}
-              <button
-                onClick={() => setAnalisisLimpio(true)}
-                className="boton-secundario"
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 11,
-                  display: "flex",
-                  gap: 6,
-                  alignItems: "center",
-                }}
-                title="Maximizar pantalla táctica"
-              >
-                <Maximize2 size={12} /> Modo Limpio
-              </button>
-
-              {id && (
-                <button
-                  className="boton-secundario"
-                  style={{
-                    padding: "6px 12px",
-                    fontSize: 11,
-                    display: "flex",
-                    gap: 6,
-                    alignItems: "center",
-                    borderColor: "var(--color-dorado)",
-                    color: "var(--color-dorado)",
-                    fontWeight: 600,
-                  }}
-                  onClick={() => navigate(`/informe/${id}`)}
-                >
-                  <FileText size={14} /> Generar Informe
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Fila 2: Contexto y Herramientas */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-            {/* Selectores de Boxeadores */}
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <CustomDropdown
-                label="Rincón Rojo"
-                value={boxeadorRojoId}
-                onChange={setBoxeadorRojoId}
-                boxeadores={boxeadoresDb.filter(
-                  (b) => !b.archivado || b.id.toString() === boxeadorRojoId,
-                )}
-                cornerColor="var(--color-rojo-suave)"
-              />
-              <span
-                style={{
-                  color: "var(--color-texto-suave)",
-                  fontWeight: 700,
-                  fontSize: 11,
-                }}
-              >
-                VS
-              </span>
-              <CustomDropdown
-                label="Rincón Azul"
-                value={boxeadorAzulId}
-                onChange={setBoxeadorAzulId}
-                boxeadores={boxeadoresDb.filter(
-                  (b) => !b.archivado || b.id.toString() === boxeadorAzulId,
-                )}
-                cornerColor="var(--color-azul-suave)"
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-
-          {/* Controles de Dibujo Top Bar */}
-          <div
-            style={{
-              ...estilos.barraDibujo,
-              opacity: videoUrl ? 1 : 0.5,
-              pointerEvents: videoUrl ? "auto" : "none",
-            }}
-          >
-            <div style={estilos.grupoHerramientas}>
-              <button
-                style={
-                  herramientaActiva === "cursor"
-                    ? estilos.btnHerramientaActivo
-                    : estilos.btnHerramienta
-                }
-                onClick={() => setHerramientaActiva("cursor")}
-                title="Cursor (1)"
-              >
-                <MousePointer2 size={18} />
-              </button>
-              <button
-                style={
-                  herramientaActiva === "lapiz"
-                    ? estilos.btnHerramientaActivo
-                    : estilos.btnHerramienta
-                }
-                onClick={() => setHerramientaActiva("lapiz")}
-                title="Lápiz (2)"
-              >
-                <PenTool size={18} />
-              </button>
-              <button
-                style={
-                  herramientaActiva === "linea"
-                    ? estilos.btnHerramientaActivo
-                    : estilos.btnHerramienta
-                }
-                onClick={() => setHerramientaActiva("linea")}
-                title="Línea"
-              >
-                <Minus size={18} />
-              </button>
-              <button
-                style={
-                  herramientaActiva === "circulo"
-                    ? estilos.btnHerramientaActivo
-                    : estilos.btnHerramienta
-                }
-                onClick={() => setHerramientaActiva("circulo")}
-                title="Círculo"
-              >
-                <Circle size={18} />
-              </button>
-              <button
-                style={
-                  herramientaActiva === "texto"
-                    ? estilos.btnHerramientaActivo
-                    : estilos.btnHerramienta
-                }
-                onClick={() => setHerramientaActiva("texto")}
-                title="Texto"
-              >
-                <Type size={18} />
-              </button>
-            </div>
-            <div style={estilos.divisor}></div>
-            <div style={estilos.grupoColores}>
-              {COLORES.map((color) => (
-                <button
-                  key={color}
-                  style={{
-                    ...estilos.btnColor,
-                    background: color,
-                    border:
-                      colorActivo === color
-                        ? "2px solid var(--color-texto)"
-                        : "none",
-                  }}
-                  onClick={() => setColorActivo(color)}
-                />
-              ))}
-            </div>
-            <div style={estilos.divisor}></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-              <span style={{ fontSize: 10, color: 'var(--color-texto-suave)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grosor</span>
-              <input
-                type="range"
-                min="1"
-                max="20"
-                value={tamanioLapiz}
-                onChange={(e) => setTamanioLapiz(Number(e.target.value))}
-                style={{
-                  width: 80,
-                  accentColor: 'var(--color-dorado)',
-                  cursor: 'pointer'
-                }}
-                title={`Grosor actual: ${tamanioLapiz}px`}
-              />
-              <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--color-dorado)', minWidth: 24, fontWeight: 700 }}>
-                {tamanioLapiz}px
-              </span>
-            </div>
-            <div style={estilos.divisor}></div>
-            <button
-              style={estilos.btnHerramienta}
-              onClick={() => canvasInstance?.clear()}
-              title="Limpiar Canvas"
-            >
-              <Trash2 size={18} />
-            </button>
-          </div>
-
-          {/* CRONÓMETRO DE ROUND */}
-          <div style={{ position: "relative" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                background: "var(--color-superficie-2)",
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: `1px solid ${cronActivo ? "var(--color-rojo-suave)" : "var(--color-borde)"}`,
-                transition: "border 0.3s",
-              }}
-            >
-              <Timer
-                size={16}
-                color={
-                  cronActivo
-                    ? "var(--color-rojo-suave)"
-                    : "var(--color-texto-suave)"
-                }
-              />
-
-              {estadoRound === "DESCANSO" ? (
-                <motion.span
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 900,
-                    color: "var(--color-rojo-suave)",
-                    background: "rgba(231,76,60,0.15)",
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    border: "1px solid rgba(231,76,60,0.3)",
-                    letterSpacing: 1,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  DESCANSO
-                </motion.span>
-              ) : (
-                <>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "var(--color-texto-suave)",
-                      textTransform: "uppercase",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Rnd
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: cronActivo
-                        ? "var(--color-rojo-suave)"
-                        : "var(--color-texto)",
-                      letterSpacing: 2,
-                      minWidth: 52,
-                      textAlign: "center",
-                    }}
-                  >
-                    {roundActual}
-                  </span>
-                </>
-              )}
-
-              <div style={estilos.divisor}></div>
-              <span
-                style={{
-                  fontFamily: "monospace",
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color:
-                    estadoRound === "DESCANSO"
-                      ? "var(--color-dorado)"
-                      : tiempoRound <= 10
-                        ? "var(--color-rojo-suave)"
-                        : "var(--color-texto)",
-                  letterSpacing: 2,
-                  minWidth: 60,
-                  textAlign: "center",
-                }}
-              >
-                {formatRound(tiempoRound)}
-              </span>
-              <div style={estilos.divisor}></div>
-              <button
-                onClick={handleCronometroPlayPause}
-                style={{
-                  ...estilos.btnHerramienta,
-                  color: cronActivo
-                    ? "var(--color-rojo-suave)"
-                    : "var(--color-dorado)",
-                }}
-              >
-                {cronActivo ? <Pause size={18} /> : <Play size={18} />}
-              </button>
-              <button
-                onClick={resetCronometro}
-                style={{ ...estilos.btnHerramienta, fontSize: 11 }}
-                title="Reiniciar"
-              >
-                <SkipBack size={16} />
-              </button>
-              <select
-                value={duracionRound}
-                onChange={(e) => {
-                  setDuracionRound(Number(e.target.value));
-                  setTiempoRound(Number(e.target.value));
-                }}
-                style={{
-                  background: "#1e1e28",
-                  border: "none",
-                  color: "var(--color-texto-suave)",
-                  fontSize: 11,
-                  outline: "none",
-                  cursor: "pointer",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                }}
-              >
-                <option value={60} style={{ background: "#1e1e28", color: "#ffffff" }}>1 min</option>
-                <option value={120} style={{ background: "#1e1e28", color: "#ffffff" }}>2 min</option>
-                <option value={180} style={{ background: "#1e1e28", color: "#ffffff" }}>3 min</option>
-                <option value={300} style={{ background: "#1e1e28", color: "#ffffff" }}>5 min</option>
-              </select>
-              <div style={estilos.divisor}></div>
-              <button
-                onClick={() =>
-                  setMostrarMenuSincronizacion(!mostrarMenuSincronizacion)
-                }
-                style={{
-                  ...estilos.btnHerramienta,
-                  color: mostrarMenuSincronizacion
-                    ? "var(--color-dorado)"
-                    : "var(--color-texto-suave)",
-                }}
-                title="Vincular Rondas con Video"
-              >
-                <Zap size={16} />
-              </button>
-            </div>
-
-            {/* MENÚ DE VINCULACIÓN DE RONDAS FLOTANTE */}
-            {mostrarMenuSincronizacion && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  marginTop: 8,
-                  background: "var(--color-superficie)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid var(--color-dorado)",
-                  borderRadius: 12,
-                  padding: 16,
-                  zIndex: 999,
-                  width: 320,
-                  boxShadow:
-                    "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.1)",
-                }}
-              >
-                <h4
-                  style={{
-                    margin: "0 0 12px 0",
-                    fontSize: 12,
-                    color: "var(--color-dorado)",
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Vincular Rondas con Video
-                </h4>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                    maxHeight: 220,
-                    overflowY: "auto",
-                    paddingRight: 4,
-                  }}
-                >
-                  {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => {
-                    const startVal = roundStarts[r] ?? 0;
-                    return (
-                      <div
-                        key={r}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          fontSize: 11,
-                          background: "var(--color-superficie-2)",
-                          padding: "4px 8px",
-                          borderRadius: 6,
-                          border: "1px solid var(--color-borde)",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            color: "var(--color-texto)",
-                          }}
-                        >
-                          Rnd {r}
-                        </span>
-                        <input
-                          type="text"
-                          value={formatRound(startVal)}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const parts = val.split(":");
-                            let secs = 0;
-                            if (parts.length === 2) {
-                              secs =
-                                parseInt(parts[0], 10) * 60 +
-                                parseInt(parts[1], 10);
-                            } else {
-                              secs = parseInt(val, 10) || 0;
-                            }
-                            setRoundStarts((prev) => ({ ...prev, [r]: secs }));
-                          }}
-                          style={{
-                            background: "var(--color-fondo)",
-                            border: "1px solid var(--color-borde)",
-                            color: "var(--color-texto)",
-                            borderRadius: 4,
-                            width: 60,
-                            textAlign: "center",
-                            fontSize: 10,
-                            padding: "2px 0",
-                          }}
-                        />
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button
-                            onClick={() => {
-                              const t = videoRef.current
-                                ? Math.floor(videoRef.current.currentTime)
-                                : 0;
-                              setRoundStarts((prev) => ({ ...prev, [r]: t }));
-                            }}
-                            style={{
-                              background: "var(--color-dorado-alfa)",
-                              border: "none",
-                              color: "var(--color-dorado)",
-                              borderRadius: 4,
-                              padding: "4px 6px",
-                              fontSize: 9,
-                              fontWeight: 700,
-                              cursor: "pointer",
-                            }}
-                            title="Usar posición actual del video"
-                          >
-                            Fijar
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (videoRef.current) {
-                                videoRef.current.currentTime = startVal;
-                                setCurrentTime(startVal);
-                              }
-                            }}
-                            style={{
-                              background: "var(--color-superficie)",
-                              border: "1px solid var(--color-borde)",
-                              color: "var(--color-texto-suave)",
-                              borderRadius: 4,
-                              padding: "4px 6px",
-                              fontSize: 9,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Ir a
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-          </div>
-          </div>
-        </header>
-      )}
+      <SessionHeader
+        id={id}
+        navigate={navigate}
+        boxeadoresDb={boxeadoresDb}
+        boxeadorRojoId={boxeadorRojoId}
+        setBoxeadorRojoId={setBoxeadorRojoId}
+        boxeadorAzulId={boxeadorAzulId}
+        setBoxeadorAzulId={setBoxeadorAzulId}
+        historialPasado={historialPasado}
+        historialFuturo={historialFuturo}
+        handleUndo={handleUndo}
+        handleRedo={handleRedo}
+        setMostrarManual={setMostrarManual}
+        setManualTab={setManualTab}
+        setAnalisisLimpio={setAnalisisLimpio}
+        analisisLimpio={analisisLimpio}
+        videoUrl={videoUrl}
+        videoRef={videoRef}
+        isPlaying={isPlaying}
+        setIsPlaying={setIsPlaying}
+        roundActual={roundActual}
+        setRoundActual={setRoundActual}
+        duracionRound={duracionRound}
+        totalRounds={totalRounds}
+        roundStarts={roundStarts}
+        tiempoRound={tiempoRound}
+        setTiempoRound={setTiempoRound}
+        cronActivo={cronActivo}
+        setCronActivo={setCronActivo}
+        estadoRound={estadoRound}
+        setEstadoRound={setEstadoRound}
+        sonarCampana={sonarCampana}
+        registrarEvento={registrarEvento}
+        herramientaActiva={herramientaActiva}
+        setHerramientaActiva={setHerramientaActiva}
+        colorActivo={colorActivo}
+        setColorActivo={setColorActivo}
+        tamanioLapiz={tamanioLapiz}
+        setTamanioLapiz={setTamanioLapiz}
+        canvasInstance={canvasInstance}
+        colores={COLORES}
+        estilos={estilos}
+        setCurrentTime={setCurrentTime}
+      />
 
       {/* PROGRESS OVERLAY FOR TRAINING DATASET */}
       {exportandoDataset && (
@@ -3496,8 +2643,10 @@ export default function EditorTactico() {
       )}
 
       <div style={estilos.layoutPrincipal}>
-        {/* ZONA IZQUIERDA: Video + Canvas + Botones */}
-        <div style={{ ...estilos.zonaVideo, flex: analisisLimpio ? "1" : "3" }}>
+        {/* COLUMNA IZQUIERDA: Video, Playback, Timeline y Teclado Táctil */}
+        <div style={{ ...estilos.columnaIzquierdaEditor, flex: 1.2 }}>
+          {/* SECCIÓN SUPERIOR: Video y Línea de Tiempo (100% ancho de columna izquierda) */}
+          <div style={estilos.seccionSuperiorVideo}>
           <div style={{ ...estilos.reproductorWrapper, display: visorDetachadoAbierto ? 'none' : 'block' }} ref={wrapperRef}>
             {/* Placeholder si no hay video */}
             {!videoUrl && (
@@ -3619,6 +2768,78 @@ export default function EditorTactico() {
               </div>
             )}
 
+            {/* Telestrator Flotante y Colapsable */}
+            {videoUrl && !analisisLimpio && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 20,
+                  left: 20,
+                  zIndex: 25,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <button
+                  onClick={() => setPanelDibujoVisible(!panelDibujoVisible)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    background: panelDibujoVisible ? "rgba(212, 175, 55, 0.2)" : "rgba(20, 20, 20, 0.85)",
+                    border: panelDibujoVisible ? "1.5px solid var(--color-dorado)" : "1.5px solid rgba(255, 255, 255, 0.15)",
+                    color: panelDibujoVisible ? "var(--color-dorado)" : "var(--color-texto-suave)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                    transition: "all 0.2s",
+                  }}
+                  title="Herramientas de Dibujo"
+                >
+                  <PenTool size={18} />
+                </button>
+
+                <AnimatePresence>
+                  {panelDibujoVisible && (
+                    <motion.div
+                      initial={{ width: 0, opacity: 0, x: -10 }}
+                      animate={{ width: "auto", opacity: 1, x: 0 }}
+                      exit={{ width: 0, opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                      style={{
+                        overflow: "hidden",
+                        background: "rgba(20, 20, 20, 0.85)",
+                        backdropFilter: "blur(12px)",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: 12,
+                        padding: "4px 12px",
+                        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <DrawingToolbar
+                        videoUrl={videoUrl}
+                        herramientaActiva={herramientaActiva}
+                        setHerramientaActiva={setHerramientaActiva}
+                        colorActivo={colorActivo}
+                        setColorActivo={setColorActivo}
+                        tamanioLapiz={tamanioLapiz}
+                        setTamanioLapiz={setTamanioLapiz}
+                        canvasInstance={canvasInstance}
+                        colores={COLORES}
+                        estilos={estilos}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
             {/* Video real */}
             {videoUrl && (
               <>
@@ -3628,7 +2849,7 @@ export default function EditorTactico() {
                     style={{
                       position: "absolute",
                       left: 20,
-                      top: 20,
+                      top: 76,
                       bottom: 70, // deja espacio para barra de controles inferior
                       width: 220,
                       background: "rgba(20, 20, 20, 0.8)",
@@ -3833,74 +3054,28 @@ export default function EditorTactico() {
             )}
 
             {/* Canvas siempre en el DOM para evitar que React haga crash con Fabric.js */}
-            <div
-              style={{
-                ...estilos.canvasElement,
-                display: videoUrl ? "block" : "none",
-                pointerEvents:
-                  videoUrl && capaDibujoVisible && panelActivo !== "mapa" && herramientaActiva !== "cursor"
-                    ? "auto"
-                    : "none",
-              }}
-            >
-              <canvas ref={canvasRef} />
-            </div>
+            <VideoCanvas
+              videoUrl={videoUrl}
+              capaDibujoVisible={capaDibujoVisible}
+              panelActivo={panelActivo}
+              herramientaActiva={herramientaActiva}
+              canvasRef={canvasRef}
+              estilos={estilos}
+            />
           </div>
 
-          <div
-            style={{
-              ...estilos.playbackBar,
-              opacity: videoUrl ? 1 : 0.5,
-              pointerEvents: videoUrl ? "auto" : "none",
-            }}
-          >
-            <button style={estilos.btnPlayback} onClick={() => saltar(-5)}>
-              <SkipBack size={20} />
-            </button>
-            <button style={estilos.btnPlayMain} onClick={togglePlay}>
-              {isPlaying ? (
-                <Pause size={24} color="var(--color-fondo)" />
-              ) : (
-                <Play
-                  size={24}
-                  color="var(--color-fondo)"
-                  style={{ marginLeft: 4 }}
-                />
-              )}
-            </button>
-            <button style={estilos.btnPlayback} onClick={() => saltar(5)}>
-              <SkipForward size={20} />
-            </button>
-            <div style={estilos.timeDisplay}>{formatTime(currentTime)}</div>
-
-            <div style={{ flex: 1 }}></div>
-            {visorDetachadoAbierto && (
-              <button
-                className="boton-secundario"
-                onClick={abrirVisorDetachado}
-                style={{
-                  fontSize: 12,
-                  padding: "4px 12px",
-                  marginRight: 8,
-                  borderColor: "var(--color-dorado)",
-                  color: "var(--color-dorado)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5
-                }}
-              >
-                <ExternalLink size={12} style={{ transform: "rotate(180deg)" }} />
-                Acoplar Video
-              </button>
-            )}
-            <button
-              className="boton-secundario"
-              onClick={() => setCapaDibujoVisible(!capaDibujoVisible)}
-              style={{ fontSize: 12, padding: "4px 12px" }}
-            >
-              {capaDibujoVisible ? "Ocultar Trazos" : "Mostrar Trazos"}
-            </button>
-          </div>
+          <VideoPlaybackControls
+            videoUrl={videoUrl}
+            isPlaying={isPlaying}
+            togglePlay={togglePlay}
+            currentTime={currentTime}
+            saltar={saltar}
+            visorDetachadoAbierto={visorDetachadoAbierto}
+            abrirVisorDetachado={abrirVisorDetachado}
+            capaDibujoVisible={capaDibujoVisible}
+            setCapaDibujoVisible={setCapaDibujoVisible}
+            estilos={estilos}
+          />
 
           {/* VIDEO TIMELINE OVERLAY — se muestra si hay video */}
           {videoUrl && (
@@ -3912,6 +3087,7 @@ export default function EditorTactico() {
               expanded={visorDetachadoAbierto}
               roundStarts={roundStarts}
               totalRounds={totalRounds}
+              filtroAislamiento={filtroAislamiento}
               style={{
                 flex: visorDetachadoAbierto ? 1 : 'none',
               }}
@@ -3923,6 +3099,17 @@ export default function EditorTactico() {
                 if (videoRef.current) {
                   videoRef.current.currentTime = t;
                   setCurrentTime(t);
+                  // Sincronizar seek manual instantáneamente con el visor desacoplado
+                  if (window.api && window.api.video) {
+                    window.api.video.enviarMensajeSync({
+                      type: 'TIME_UPDATE',
+                      payload: { 
+                        currentTime: t, 
+                        duracion: videoRef.current.duration || videoDuration, 
+                        round: roundActual 
+                      },
+                    });
+                  }
                 }
               }}
               onSeekLoop={(t, id) => {
@@ -3935,6 +3122,17 @@ export default function EditorTactico() {
                   videoRef.current.currentTime = start;
                   setCurrentTime(start);
                   videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+                  // Sincronizar bucle táctico con el visor desacoplado
+                  if (window.api && window.api.video) {
+                    window.api.video.enviarMensajeSync({
+                      type: 'TIME_UPDATE',
+                      payload: { 
+                        currentTime: start, 
+                        duracion: videoRef.current.duration || videoDuration, 
+                        round: roundActual 
+                      },
+                    });
+                  }
                 }
               }}
               onCompare={({ a, b }) => console.log("[Comparar]", a, b)}
@@ -3943,6 +3141,9 @@ export default function EditorTactico() {
                 setSidebarExpandido(true);
                 setPanelActivo("mapa");
                 setEventoSeleccionadoId(ev.id);
+                if (ev.coordX === undefined || ev.coordY === undefined) {
+                  setEventoMapeoGuiadoId(ev.id);
+                }
               }}
               onUpdateEvento={(id, campos) => {
                 setTimeline(prev => prev.map(ev => ev.id === id ? { ...ev, ...campos } : ev));
@@ -3956,203 +3157,44 @@ export default function EditorTactico() {
               onMoveEvento={(id, nuevoTiempo) => {
                 setTimeline(prev => prev.map(ev => ev.id === id ? { ...ev, timestamp: nuevoTiempo, tiempoVideo: nuevoTiempo } : ev));
               }}
+              onSelectEvento={setEventoSeleccionadoId}
+              onRemoveEvento={handleRemoveImpacto}
             />
           )}
+        </div> {/* cierre de seccionSuperiorVideo */}
 
-          {/* TAC-TECLADO ACCIONES (Hiding in clean mode makes drawing workspace extremely immersive) */}
-          {!analisisLimpio && (
-            <div
-              style={{
-                ...estilos.panelAcciones,
-                opacity: videoUrl ? 1 : 0.5,
-                pointerEvents: videoUrl ? "auto" : "none",
-                minHeight: panelAccionesDesacoplado ? 200 : 'auto',
-              }}
-            >
-              {panelAccionesDesacoplado ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 12,
-                    width: '100%',
-                    height: '100%',
-                    padding: '24px 16px',
-                    textAlign: 'center',
-                  }}
-                >
-                  <div style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '50%',
-                    background: 'rgba(212,175,55,0.1)',
-                    border: '1px dashed var(--color-dorado)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <ExternalLink size={20} color="var(--color-dorado)" />
-                  </div>
-                  <div>
-                    <h4 style={{ color: 'var(--color-texto)', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Panel de Acciones Desacoplado</h4>
-                    <p style={{ color: 'var(--color-texto-suave)', fontSize: 11, lineHeight: 1.4, maxWidth: 280 }}>
-                      Las acciones tácticas se están registrando y controlando desde la ventana secundaria.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setPanelAccionesDesacoplado(false)}
-                    className="boton-secundario"
-                    style={{ fontSize: 10, padding: '5px 12px', marginTop: 4 }}
-                  >
-                    Acoplar Panel Localmente
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Selector de Foco */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      marginBottom: 4,
-                      gap: 10,
-                      alignItems: "center",
-                      width: '100%',
-                    }}
-                  >
-                <div style={{ ...estilos.toggleFocoWrapper, flex: 1 }}>
-                  <button
-                    style={{ ...estilos.btnFoco("roja", esquinaDestino), flex: 1 }}
-                    onClick={() => setEsquinaDestino("roja")}
-                  >
-                    <span style={{ fontSize: 10, opacity: 0.6, marginRight: 5 }}>
-                      [{formatearTecla(hotkeys.RinconRojo)}]
-                    </span>
-                    Rincón Rojo
-                  </button>
-                  <button
-                    style={{ ...estilos.btnFoco("azul", esquinaDestino), flex: 1 }}
-                    onClick={() => setEsquinaDestino("azul")}
-                  >
-                    <span style={{ fontSize: 10, opacity: 0.6, marginRight: 5 }}>
-                      [{formatearTecla(hotkeys.RinconAzul)}]
-                    </span>
-                    Rincón Azul
-                  </button>
-                </div>
-
-                <button
-                  onClick={toggleVoice}
-                  style={{
-                    background: listening ? "rgba(231,76,60,0.15)" : "var(--color-superficie)",
-                    border: `1px solid ${listening ? "var(--color-rojo-suave)" : "var(--color-borde)"}`,
-                    borderRadius: 10,
-                    padding: "5px 12px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    color: listening ? "var(--color-rojo-suave)" : "var(--color-texto-suave)",
-                    cursor: "pointer",
-                    transition: "all 0.3s ease",
-                    flexShrink: 0,
-                  }}
-                >
-                  {listening ? <Mic size={14} className="animate-pulse" /> : <MicOff size={14} />}
-                  <span style={{ fontSize: 10, fontWeight: 800 }}>
-                    {listening ? "VOZ ACTIVA" : "ACTIVAR VOZ"}
-                  </span>
-                </button>
-              </div>
-
-              {/* ── GRUPO 1: GOLPES OFENSIVOS ── */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                <span style={estilos.labelGrupo}>🥊 Golpes Ofensivos</span>
-                <div style={estilos.gridFila1}>
-                  {ACCIONES_FILA_1.map((act) => (
-                    <motion.button
-                      key={act}
-                      style={{
-                        ...estilos.btnAccionPrincipal(esquinaDestino),
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                        padding: '6px 4px',
-                        minHeight: 46,
-                      }}
-                      onClick={() => registrarEvento(act, esquinaDestino)}
-                      animate={{
-                        scale: teclaActiva === act ? 0.95 : 1,
-                        backgroundColor:
-                          teclaActiva === act
-                            ? "var(--color-dorado-alfa)"
-                            : estilos.btnAccionPrincipal(esquinaDestino).background,
-                      }}
-                      transition={{ duration: 0.1 }}
-                    >
-                      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.02em' }}>{act}</span>
-                      <span style={estilos.hotkeyHint}>[{formatearTecla(hotkeys[act])}]</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── GRUPO 2: DEFENSA Y MOVIMIENTO ── */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                <span style={estilos.labelGrupo}>🛡️ Defensa / Movimiento / Otros</span>
-                <div style={estilos.gridFila2}>
-                  {ACCIONES_FILA_2.map((act) => (
-                    <motion.button
-                      key={act}
-                      style={{
-                        ...estilos.btnAccionSecundaria,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                        minHeight: 38,
-                        padding: '5px 4px',
-                      }}
-                      onClick={() => registrarEvento(act, esquinaDestino)}
-                      animate={{
-                        scale: teclaActiva === act ? 0.95 : 1,
-                        backgroundColor:
-                          teclaActiva === act
-                            ? "var(--color-dorado-alfa)"
-                            : estilos.btnAccionSecundaria.background,
-                      }}
-                      transition={{ duration: 0.1 }}
-                    >
-                      <span style={{ fontSize: 10, fontWeight: 700 }}>{act}</span>
-                      {hotkeys[act] && (
-                        <span style={estilos.hotkeyHint}>[{formatearTecla(hotkeys[act])}]</span>
-                      )}
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-
-        {/* ZONA DERECHA: Timeline + Heatmaps + Stats + Voz (Hiding completely in clean mode) */}
+        {/* Teclado Táctil en la parte inferior de la columna izquierda */}
         {!analisisLimpio && (
-          <div
-            style={{
-              ...estilos.zonaTimeline,
-              maxWidth: sidebarExpandido ? 880 : 660,
-              width: sidebarExpandido ? 880 : 660,
-              opacity: 1,
-              pointerEvents: "auto",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
+          <div style={estilos.seccionTecladoIzquierdo}>
+            <TactileKeyboard
+              esquinaDestino={esquinaDestino}
+              setEsquinaDestino={setEsquinaDestino}
+              listening={listening}
+              toggleVoice={toggleVoice}
+              registrarEvento={registrarEvento}
+              teclaActiva={teclaActiva}
+              hotkeys={hotkeys}
+              panelAccionesDesacoplado={panelAccionesDesacoplado}
+              setPanelAccionesDesacoplado={setPanelAccionesDesacoplado}
+            />
+          </div>
+        )}
+      </div> {/* cierre de columnaIzquierdaEditor */}
+
+      {/* COLUMNA DERECHA (ANÁLISIS): Panel Compacto (Full Height) */}
+      {!analisisLimpio && (
+        <div
+          style={{
+            ...estilos.zonaTimeline,
+            flex: 0.8,
+            minWidth: 0,
+            maxWidth: "100%",
+            width: "auto",
+            opacity: 1,
+            pointerEvents: "auto",
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
             {/* ENCABEZADO Y TABS TÁCTICOS */}
             <div
               style={{
@@ -4186,42 +3228,105 @@ export default function EditorTactico() {
                   Panel de Análisis{" "}
                   {sidebarExpandido ? "Extendido" : "Compacto"}
                 </span>
-                <button
-                  onClick={() => setSidebarExpandido(!sidebarExpandido)}
-                  style={{
-                    background: sidebarExpandido
-                      ? "rgba(212, 175, 55, 0.15)"
-                      : "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid var(--color-borde)",
-                    borderRadius: 6,
-                    color: sidebarExpandido
-                      ? "var(--color-dorado)"
-                      : "var(--color-texto-suave)",
-                    padding: "3px 8px",
-                    fontSize: 9,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    boxShadow: sidebarExpandido
-                      ? "0 0 10px rgba(212, 175, 55, 0.2)"
-                      : "none",
-                  }}
-                  title={
-                    sidebarExpandido
-                      ? "Volver a vista compacta (660px)"
-                      : "Ampliar espacio de trabajo (880px)"
-                  }
-                >
-                  {sidebarExpandido ? (
-                    <Minimize2 size={10} />
-                  ) : (
-                    <Maximize2 size={10} />
-                  )}
-                  {sidebarExpandido ? "COMPACTAR" : "AMPLIAR"}
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {/* IA Toggle */}
+                  <button
+                    onClick={() => setPanelAuxiliar(p => p === 'ia' ? null : 'ia')}
+                    style={{
+                      background: panelAuxiliar === 'ia'
+                        ? "rgba(46, 204, 113, 0.15)"
+                        : "rgba(255, 255, 255, 0.05)",
+                      border: `1px solid ${panelAuxiliar === 'ia' ? "var(--color-exito, #2ec771)" : "var(--color-borde)"}`,
+                      borderRadius: 6,
+                      color: panelAuxiliar === 'ia'
+                        ? "var(--color-exito, #2ec771)"
+                        : "var(--color-texto-suave)",
+                      padding: "3px 8px",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      boxShadow: panelAuxiliar === 'ia'
+                        ? "0 0 10px rgba(46, 204, 113, 0.2)"
+                        : "none",
+                    }}
+                    title="Asistente IA Einstein"
+                  >
+                    <Cpu size={10} />
+                    {sidebarExpandido && "IA"}
+                  </button>
+
+                  {/* Voz Toggle */}
+                  <button
+                    onClick={() => setPanelAuxiliar(p => p === 'voz' ? null : 'voz')}
+                    style={{
+                      background: panelAuxiliar === 'voz'
+                        ? "rgba(52, 152, 219, 0.15)"
+                        : "rgba(255, 255, 255, 0.05)",
+                      border: `1px solid ${panelAuxiliar === 'voz' ? "var(--color-azul-suave)" : "var(--color-borde)"}`,
+                      borderRadius: 6,
+                      color: panelAuxiliar === 'voz'
+                        ? "var(--color-azul-suave)"
+                        : "var(--color-texto-suave)",
+                      padding: "3px 8px",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      boxShadow: panelAuxiliar === 'voz'
+                        ? "0 0 10px rgba(52, 152, 219, 0.2)"
+                        : "none",
+                    }}
+                    title="Dictado por Voz"
+                  >
+                    <Mic size={10} />
+                    {sidebarExpandido && "VOZ"}
+                  </button>
+
+                  {/* Ampliar/Compactar Button */}
+                  <button
+                    onClick={() => setSidebarExpandido(!sidebarExpandido)}
+                    style={{
+                      background: sidebarExpandido
+                        ? "rgba(212, 175, 55, 0.15)"
+                        : "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid var(--color-borde)",
+                      borderRadius: 6,
+                      color: sidebarExpandido
+                        ? "var(--color-dorado)"
+                        : "var(--color-texto-suave)",
+                      padding: "3px 8px",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      boxShadow: sidebarExpandido
+                        ? "0 0 10px rgba(212, 175, 55, 0.2)"
+                        : "none",
+                    }}
+                    title={
+                      sidebarExpandido
+                        ? "Volver a vista compacta (660px)"
+                        : "Ampliar espacio de trabajo (880px)"
+                    }
+                  >
+                    {sidebarExpandido ? (
+                      <Minimize2 size={10} />
+                    ) : (
+                      <Maximize2 size={10} />
+                    )}
+                    {sidebarExpandido ? "COMPACTAR" : "AMPLIAR"}
+                  </button>
+                </div>
               </div>
 
               {/* Pestañas (Tabs) tipo píldoras horizontales */}
@@ -4267,20 +3372,6 @@ export default function EditorTactico() {
                       label: "Estadísticas",
                       color: "var(--color-texto)",
                       activeColor: "var(--color-dorado-suave)",
-                    },
-                    {
-                      id: "ollama",
-                      icon: Cpu,
-                      label: sidebarExpandido ? "Asistente IA" : "IA",
-                      color: "var(--color-texto)",
-                      activeColor: "var(--color-exito)",
-                    },
-                    {
-                      id: "voz",
-                      icon: Mic,
-                      label: "Voz",
-                      color: "var(--color-texto)",
-                      activeColor: "var(--color-azul-suave)",
                     },
                   ].map((tab) => {
                     const isDisabled = false;
@@ -4419,471 +3510,34 @@ export default function EditorTactico() {
               }}
             >
               <AnimatePresence mode="wait">
-                {panelActivo === "timeline" && (
-                  <motion.div
-                    key="timeline"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      flex: 1,
-                      minHeight: 0,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* BARRA DE FILTROS Y BÚSQUEDA */}
-                    <div style={{
-                      display: "flex",
-                      gap: 8,
-                      padding: "10px 14px",
-                      background: "rgba(255, 255, 255, 0.02)",
-                      borderBottom: "1px solid var(--color-borde)",
-                      alignItems: "center"
-                    }}>
-                      <input
-                        type="text"
-                        placeholder="Buscar golpes, notas..."
-                        value={terminoBusqueda}
-                        onChange={(e) => setTerminoBusqueda(e.target.value)}
-                        style={{
-                          flex: 1,
-                          background: "var(--color-superficie-2)",
-                          border: "1px solid var(--color-borde)",
-                          borderRadius: 16,
-                          color: "var(--color-texto)",
-                          fontSize: 11,
-                          padding: "6px 12px",
-                          outline: "none"
-                        }}
-                      />
-                      <select
-                        value={filtroRound}
-                        onChange={(e) => setFiltroRound(e.target.value)}
-                        style={{
-                          background: "var(--color-superficie-2)",
-                          border: "1px solid var(--color-borde)",
-                          borderRadius: 16,
-                          color: "var(--color-texto)",
-                          fontSize: 11,
-                          padding: "6px 10px",
-                          outline: "none",
-                          cursor: "pointer",
-                          maxWidth: 100
-                        }}
-                      >
-                        <option value="todos">Todos Rnd</option>
-                        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
-                          <option key={r} value={r.toString()}>Round {r}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div style={estilos.timelineLista}>
-                      <AnimatePresence>
-                        {timeline.length === 0 ? (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              padding: "32px 16px",
-                              background: "rgba(255, 255, 255, 0.03)",
-                              backdropFilter: "blur(10px)",
-                              borderRadius: 12,
-                              border: "1px dashed var(--color-borde)",
-                              textAlign: "center",
-                              margin: "24px 0",
-                              gap: 16,
-                            }}
-                          >
-                            <Video size={36} color="var(--color-dorado)" />
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
-                              }}
-                            >
-                              <h4
-                                style={{
-                                  margin: 0,
-                                  fontSize: 14,
-                                  fontWeight: 700,
-                                  color: "var(--color-texto)",
-                                }}
-                              >
-                                Línea de Tiempo Vacía
-                              </h4>
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: 11,
-                                  color: "var(--color-texto-suave)",
-                                  lineHeight: 1.5,
-                                }}
-                              >
-                                Carga un video táctico y utiliza los atajos del
-                                teclado o haz clic en las acciones inferiores
-                                para registrar golpes y eventos.
-                              </p>
-                            </div>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 6,
-                                background: "rgba(0, 0, 0, 0.2)",
-                                padding: "10px 14px",
-                                borderRadius: 8,
-                                width: "100%",
-                                textAlign: "left",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  color: "var(--color-dorado)",
-                                  textTransform: "uppercase",
-                                  letterSpacing: 0.5,
-                                  marginBottom: 2,
-                                }}
-                              >
-                                Consejos rápidos:
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--color-texto-suave)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
-                              >
-                                <span>🥊</span> Tecla <strong>J</strong> para
-                                Jab del rincón activo
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--color-texto-suave)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
-                              >
-                                <span>⚡</span> Teclas <strong>Q / W</strong>{" "}
-                                cambian Rincón Rojo/Azul
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--color-texto-suave)",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 6,
-                                }}
-                              >
-                                <span>🎙️</span> Activa la Narración por Voz para
-                                manos libres
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          eventosFiltrados.map((ev) => (
-                            <motion.div
-                              key={ev.id}
-                              id={`ev-list-item-${ev.id}`}
-                              onClick={() => {
-                                setEventoSeleccionadoId(ev.id);
-                                if (videoRef.current) {
-                                  videoRef.current.currentTime = ev.timestamp;
-                                  setCurrentTime(ev.timestamp);
-                                }
-                                // Clic simple: Buscamos y seleccionamos, pero permanecemos en la pestaña "Línea" (timeline)
-                                if (fabricCanvasRef.current) {
-                                  if (ev.canvasData) {
-                                    try {
-                                      isHistoryLoadingRef.current = true;
-                                      fabricCanvasRef.current.loadFromJSON(
-                                        JSON.parse(ev.canvasData),
-                                        () => {
-                                          fabricCanvasRef.current.renderAll();
-                                          isHistoryLoadingRef.current = false;
-                                          actualizarObjetosDibujo();
-                                        },
-                                      );
-                                    } catch (e) {
-                                      isHistoryLoadingRef.current = false;
-                                    }
-                                  } else {
-                                    fabricCanvasRef.current.clear();
-                                    actualizarObjetosDibujo();
-                                  }
-                                }
-                              }}
-                              onDoubleClick={() => {
-                                // Doble clic: abre modal de edición de notas de inmediato
-                                setEventoAEditar(ev);
-                              }}
-                              onContextMenu={(e) => {
-                                // Clic derecho: selecciona evento, busca video y enfoca pestaña "mapa" para mapeo guiado corporal
-                                e.preventDefault();
-                                setEventoSeleccionadoId(ev.id);
-                                if (videoRef.current) {
-                                  videoRef.current.currentTime = ev.timestamp;
-                                  setCurrentTime(ev.timestamp);
-                                }
-                                const esMappable = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo);
-                                if (esMappable) {
-                                  setPanelActivo("mapa");
-                                }
-                              }}
-                              style={{
-                                ...estilos.eventoItem,
-                                cursor: "pointer",
-                                borderColor:
-                                  eventoSeleccionadoId === ev.id
-                                    ? "var(--color-dorado)"
-                                    : "var(--color-borde)",
-                                background:
-                                  eventoSeleccionadoId === ev.id
-                                    ? "rgba(212,175,55,0.08)"
-                                    : "var(--color-superficie)",
-                                boxShadow:
-                                  eventoSeleccionadoId === ev.id
-                                    ? "0 0 8px rgba(212,175,55,0.2)"
-                                    : "none",
-                                transition: "all 0.2s ease",
-                              }}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, scale: 0.9 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              {ev.snapshot ? (
-                                <div
-                                  style={{
-                                    position: "relative",
-                                    width: 44,
-                                    height: 28,
-                                    borderRadius: 4,
-                                    overflow: "hidden",
-                                    border: "1px solid var(--color-borde)",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <img
-                                    src={ev.snapshot}
-                                    alt="Snap"
-                                    style={{
-                                      width: "100%",
-                                      height: "100%",
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      bottom: 1,
-                                      right: 2,
-                                      fontSize: 8,
-                                      fontFamily: "monospace",
-                                      color: "#fff",
-                                      textShadow: "1px 1px 2px #000",
-                                      background: "rgba(0,0,0,0.4)",
-                                      padding: "0 2px",
-                                      borderRadius: 2,
-                                    }}
-                                  >
-                                    {formatTime(ev.timestamp)}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div style={estilos.eventoTiempo}>
-                                  {formatTime(ev.timestamp)}
-                                </div>
-                              )}
-                              <div style={{ flex: 1 }}>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                  }}
-                                >
-                                  <span style={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    color: "var(--color-dorado)",
-                                    background: "rgba(212, 175, 55, 0.15)",
-                                    padding: "2px 6px",
-                                    borderRadius: 4,
-                                    marginRight: 4,
-                                    whiteSpace: "nowrap"
-                                  }}>
-                                    #{ev._numero}
-                                  </span>
-                                  <select
-                                    value={ev.tipo}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={(e) => {
-                                      pushStateToHistory();
-                                      const nuevo = [...timeline];
-                                      const idx = nuevo.findIndex(
-                                        (t) => t.id === ev.id,
-                                      );
-                                      nuevo[idx].tipo = e.target.value;
-                                      setTimeline(nuevo);
-                                    }}
-                                    style={{
-                                      ...estilos.eventoTipo,
-                                      background: "#1e1e28",
-                                      color: "#ffffff",
-                                      border: "none",
-                                      outline: "none",
-                                      cursor: "pointer",
-                                      appearance: "none",
-                                      padding: "2px 6px",
-                                      borderRadius: "4px",
-                                    }}
-                                  >
-                                    <option value="Jab" style={{ background: "#1e1e28", color: "#ffffff" }}>Jab</option>
-                                    <option value="Recto" style={{ background: "#1e1e28", color: "#ffffff" }}>Recto</option>
-                                    <option value="Cross" style={{ background: "#1e1e28", color: "#ffffff" }}>Cross</option>
-                                    <option value="Gancho" style={{ background: "#1e1e28", color: "#ffffff" }}>Gancho</option>
-                                    <option value="Uppercut" style={{ background: "#1e1e28", color: "#ffffff" }}>Uppercut</option>
-                                    <option value="Swing" style={{ background: "#1e1e28", color: "#ffffff" }}>Swing</option>
-                                    <option value="Finta" style={{ background: "#1e1e28", color: "#ffffff" }}>Finta</option>
-                                    <option value="Esquiva" style={{ background: "#1e1e28", color: "#ffffff" }}>Esquiva</option>
-                                    <option value="Bloqueo" style={{ background: "#1e1e28", color: "#ffffff" }}>Bloqueo</option>
-                                    <option value="Clinch" style={{ background: "#1e1e28", color: "#ffffff" }}>Clinch</option>
-                                    <option value="Pivoteo" style={{ background: "#1e1e28", color: "#ffffff" }}>Pivoteo</option>
-                                    <option value="Marca General" style={{ background: "#1e1e28", color: "#ffffff" }}>Marca General</option>
-                                  </select>
-                                  {ev.lugar ? (
-                                    <div
-                                      style={{
-                                        fontSize: 9,
-                                        color: "var(--color-dorado)",
-                                        marginTop: 2,
-                                      }}
-                                    >
-                                      📍 {ev.lugar}{" "}
-                                    </div>
-                                  ) : (
-                                    ev.esquina !== "general" && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEventoSeleccionadoId(ev.id);
-                                          setPanelActivo("mapa");
-                                        }}
-                                        style={{
-                                          marginTop: 4,
-                                          background: "rgba(212,175,55,0.1)",
-                                          color: "var(--color-dorado)",
-                                          border: "1px solid rgba(212,175,55,0.3)",
-                                          borderRadius: 4,
-                                          padding: "2px 6px",
-                                          fontSize: 9,
-                                          cursor: "pointer",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          gap: 4
-                                        }}
-                                      >
-                                        <span>📍</span> Mapear
-                                      </button>
-                                    )
-                                  )}
-                                  {tieneDibujo(ev) && (
-                                    <span
-                                      title="Dibujo táctico asociado"
-                                      style={{
-                                        color: "var(--color-dorado)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      <PenTool size={11} />
-                                    </span>
-                                  )}
-                                </div>
-                                {ev.esquina !== "general" && (
-                                  <div
-                                    style={estilos.eventoEsquina(ev.esquina)}
-                                  >
-                                    Rincón{" "}
-                                    {ev.esquina === "roja" ? "Rojo" : "Azul"}
-                                  </div>
-                                )}
-                                {ev.lugar && (
-                                  <div
-                                    style={{
-                                      fontSize: 9,
-                                      color: "var(--color-dorado)",
-                                      marginTop: 2,
-                                    }}
-                                  >
-                                    📍 {ev.lugar}{" "}
-                                    {ev.coordX
-                                      ? `(${ev.coordX}, ${ev.coordY})`
-                                      : ""}
-                                  </div>
-                                )}
-                              </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: 6,
-                                }}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEventoAEditar(ev);
-                                    setSidebarExpandido(true);
-                                    setPanelActivo("mapa");
-                                    setEventoSeleccionadoId(ev.id);
-                                  }}
-                                  style={{
-                                    background: "transparent",
-                                    border: "none",
-                                    color: "var(--color-texto-suave)",
-                                    cursor: "pointer",
-                                    padding: 4,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                  title="Editar detalles precisos"
-                                >
-                                  <PenTool size={14} />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    pushStateToHistory();
-                                    setTimeline(
-                                      timeline.filter((t) => t.id !== ev.id),
-                                    );
-                                  }}
-                                  style={estilos.btnBorrarEvento}
-                                  title="Borrar evento"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </motion.div>
-                          ))
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.div>
+                                {panelActivo === "timeline" && (
+                  <SidebarTimeline
+                    timeline={timeline}
+                    eventosFiltrados={eventosFiltrados}
+                    eventoSeleccionadoId={eventoSeleccionadoId}
+                    setEventoSeleccionadoId={setEventoSeleccionadoId}
+                    setEventoMapeoGuiadoId={setEventoMapeoGuiadoId}
+                    videoRef={videoRef}
+                    setCurrentTime={setCurrentTime}
+                    fabricCanvasRef={fabricCanvasRef}
+                    actualizarObjetosDibujo={actualizarObjetosDibujo}
+                    isHistoryLoadingRef={isHistoryLoadingRef}
+                    setEventoAEditar={setEventoAEditar}
+                    pushStateToHistory={pushStateToHistory}
+                    setTimeline={setTimeline}
+                    tieneDibujo={tieneDibujo}
+                    terminoBusqueda={terminoBusqueda}
+                    setTerminoBusqueda={setTerminoBusqueda}
+                    filtroRound={filtroRound}
+                    setFiltroRound={setFiltroRound}
+                    totalRounds={totalRounds}
+                    filtroAislamiento={filtroAislamiento}
+                    setFiltroAislamiento={setFiltroAislamiento}
+                    boxeadoresDb={boxeadoresDb}
+                    boxeadorRojoId={boxeadorRojoId}
+                    boxeadorAzulId={boxeadorAzulId}
+                    setPanelActivo={setPanelActivo}
+                  />
                 )}
 
                 {/* TAB MAPA DE CALOR */}
@@ -4906,16 +3560,23 @@ export default function EditorTactico() {
                     {/* Mapa de impactos (ocupa el espacio disponible) */}
                     <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                       <MapaImpactos
-                        eventos={timeline}
+                        eventos={filtroAislamiento ? timeline.filter(ev => ev.tipo === filtroAislamiento) : timeline}
                         onAddImpacto={handleAddImpacto}
                         onRemoveImpacto={handleRemoveImpacto}
                         onUpdateNota={handleUpdateNota}
                         onSelectEvento={handleSelectEvento}
-                        onDeselectEvento={() => setEventoSeleccionadoId(null)}
+                        onDeselectEvento={() => {
+                          setEventoSeleccionadoId(null);
+                          setEventoMapeoGuiadoId(null);
+                        }}
                         onUpdateImpactoCoords={handleUpdateImpactoCoords}
                         eventoMapeoActivo={(() => {
-                          const ev = timeline.find(e => e.id === eventoSeleccionadoId);
-                          if (ev && ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo)) {
+                          const ev = timeline.find(e => e.id === eventoMapeoGuiadoId);
+                          if (
+                            ev &&
+                            ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(ev.tipo) &&
+                            (ev.coordX === undefined || ev.coordY === undefined)
+                          ) {
                             return ev;
                           }
                           return null;
@@ -4930,1518 +3591,134 @@ export default function EditorTactico() {
                 )}
 
                 {/* TAB ESTADÍSTICAS EN TIEMPO REAL */}
-                {panelActivo === "stats" && (
-                  <motion.div
-                    key="stats"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      flex: 1,
-                      minHeight: 0,
-                      overflowY: "auto",
-                      padding: "16px 16px 32px 16px",
-                      gap: 16,
-                    }}
-                  >
-                    {/* SELECTOR DE ROUND PARA ESTADÍSTICAS */}
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      background: "rgba(255, 255, 255, 0.02)",
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      border: "1px solid var(--color-borde)"
-                    }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-dorado)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        Filtrar Asalto:
-                      </span>
-                      <select
-                        value={filtroEstadisticasRound}
-                        onChange={(e) => setFiltroEstadisticasRound(e.target.value)}
-                        style={{
-                          background: "var(--color-superficie-2)",
-                          border: "1px solid var(--color-borde)",
-                          borderRadius: 6,
-                          color: "var(--color-texto)",
-                          fontSize: 11,
-                          padding: "4px 8px",
-                          outline: "none",
-                          cursor: "pointer"
-                        }}
-                      >
-                        <option value="todos">Combate Completo</option>
-                        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
-                          <option key={r} value={r.toString()}>Round {r}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* KPIs */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gap: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: "var(--color-superficie)",
-                          padding: 10,
-                          borderRadius: 8,
-                          textAlign: "center",
-                          border: "1px solid var(--color-borde)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "var(--color-texto-suave)",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Eficacia Ofensiva
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 20,
-                            fontWeight: 900,
-                            color: "var(--color-exito)",
-                            marginTop: 4,
-                          }}
-                        >
-                          {statsBoxeador.resumen.eficacia}%
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          background: "var(--color-superficie)",
-                          padding: 10,
-                          borderRadius: 8,
-                          textAlign: "center",
-                          border: "1px solid var(--color-borde)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "var(--color-texto-suave)",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Volumen Golpes
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 20,
-                            fontWeight: 900,
-                            color: "var(--color-texto)",
-                            marginTop: 4,
-                          }}
-                        >
-                          {statsBoxeador.resumen.volumen}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          background: "var(--color-superficie)",
-                          padding: 10,
-                          borderRadius: 8,
-                          textAlign: "center",
-                          border: "1px solid var(--color-borde)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 9,
-                            color: "var(--color-texto-suave)",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Defensas Totales
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 20,
-                            fontWeight: 900,
-                            color: "var(--color-texto)",
-                            marginTop: 4,
-                          }}
-                        >
-                          {statsBoxeador.resumen.defensas}
-                        </div>
-                      </div>
-                    </div>
-
-                    <hr
-                      style={{
-                        borderColor: "var(--color-borde)",
-                        borderStyle: "solid",
-                        borderWidth: "1px 0 0 0",
-                      }}
-                    />
-
-                    <h4
-                      style={{
-                        margin: 0,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "var(--color-dorado)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      Conteo de Acciones
-                    </h4>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 10,
-                      }}
-                    >
-                      {[
-                        {
-                          label: "Jab",
-                          val: statsBoxeador.counts?.Jab || 0,
-                          color: "var(--color-dorado)",
-                        },
-                        {
-                          label: "Recto",
-                          val: statsBoxeador.counts?.Recto || 0,
-                          color: "var(--color-dorado)",
-                        },
-                        {
-                          label: "Cross",
-                          val: statsBoxeador.counts?.Cross || 0,
-                          color: "var(--color-dorado)",
-                        },
-                        {
-                          label: "Gancho",
-                          val: statsBoxeador.counts?.Gancho || 0,
-                          color: "var(--color-dorado)",
-                        },
-                        {
-                          label: "Uppercut",
-                          val: statsBoxeador.counts?.Uppercut || 0,
-                          color: "var(--color-dorado)",
-                        },
-                        {
-                          label: "Swing",
-                          val: statsBoxeador.counts?.Swing || 0,
-                          color: "var(--color-dorado)",
-                        },
-                        {
-                          label: "Finta",
-                          val: statsBoxeador.counts?.Finta || 0,
-                          color: "var(--color-azul-suave)",
-                        },
-                        {
-                          label: "Esquiva",
-                          val: statsBoxeador.counts?.Esquiva || 0,
-                          color: "var(--color-azul-suave)",
-                        },
-                        {
-                          label: "Bloqueo",
-                          val: statsBoxeador.counts?.Bloqueo || 0,
-                          color: "var(--color-azul-suave)",
-                        },
-                        {
-                          label: "Clinch",
-                          val: statsBoxeador.counts?.Clinch || 0,
-                          color: "var(--color-azul-suave)",
-                        },
-                        {
-                          label: "Pivoteo",
-                          val: statsBoxeador.counts?.Pivoteo || 0,
-                          color: "var(--color-azul-suave)",
-                        },
-                        {
-                          label: "Marca General",
-                          val: statsBoxeador.counts?.["Marca General"] || 0,
-                          color: "var(--color-azul-suave)",
-                        },
-                      ].map((action) => (
-                        <div
-                          key={action.label}
-                          style={{
-                            background: "var(--color-superficie)",
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            border: "1px solid var(--color-borde)",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 10,
-                                color: "var(--color-texto-suave)",
-                                fontWeight: 600,
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              {action.label}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 800,
-                                color: action.color,
-                              }}
-                            >
-                              {action.val}
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              background: "rgba(255,255,255,0.03)",
-                              height: 4,
-                              borderRadius: 2,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                background: action.color,
-                                width: `${Math.min((action.val / Math.max(statsBoxeador.resumen.volumen, 1)) * 100, 100)}%`,
-                                height: "100%",
-                                borderRadius: 2,
-                                transition: "width 0.3s ease",
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: "var(--color-texto-suave)",
-                        fontStyle: "italic",
-                        textAlign: "center",
-                        marginTop: 10,
-                      }}
-                    >
-                      💡 Las métricas de volumen, eficacia y el conteo de acciones se
-                      actualizan dinámicamente en tiempo real a medida que
-                      etiquetas eventos en la línea de tiempo.
-                    </div>
-                  </motion.div>
+                                {panelActivo === "stats" && (
+                  <SidebarEstadisticas
+                    statsBoxeador={statsBoxeador}
+                    filtroEstadisticasRound={filtroEstadisticasRound}
+                    setFiltroEstadisticasRound={setFiltroEstadisticasRound}
+                    totalRounds={totalRounds}
+                  />
                 )}
 
-                {/* TAB OLLAMA IA FRAME-BY-FRAME */}
-                {panelActivo === "ollama" && (
-                  <motion.div
-                    key="ollama"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      flex: 1,
-                      minHeight: 0,
-                      overflowY: "auto",
-                      padding: "16px 16px 32px 16px",
-                      gap: 12,
-                    }}
-                  >
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      <Cpu size={16} color="var(--color-exito)" />
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "var(--color-texto)",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Asistente Local Einstein (IA)
-                      </span>
-                    </div>
-
-                    <div
-                      style={{
-                        background: "var(--color-superficie)",
-                        borderRadius: 10,
-                        padding: 12,
-                        border: "1px solid var(--color-borde)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "var(--color-texto-suave)",
-                          }}
-                        >
-                          Servidor Ollama:
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: ollamaDisponible
-                              ? "var(--color-exito)"
-                              : "var(--color-rojo-suave)",
-                          }}
-                        >
-                          {ollamaDisponible
-                            ? "🟢 CONECTADO"
-                            : "🔴 NO ENCONTRADO"}
-                        </span>
-                      </div>
-
-                      {/* Selectores */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                        }}
-                      >
-                        <label
-                          style={{
-                            fontSize: 10,
-                            color: "var(--color-texto-suave)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Modelo Multimodal de Visión:
-                        </label>
-                        <select
-                          value={ollamaModelo}
-                          onChange={(e) => setOllamaModelo(e.target.value)}
-                          style={{
-                            background: "var(--color-fondo)",
-                            border: "1px solid var(--color-borde)",
-                            color: "var(--color-texto)",
-                            borderRadius: 6,
-                            padding: 6,
-                            fontSize: 11,
-                            outline: "none",
-                          }}
-                        >
-                          <option value="llava">llava (Default Vision)</option>
-                          <option value="llama3.2-vision">
-                            llama3.2-vision
-                          </option>
-                          <option value="moondream">moondream</option>
-                        </select>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                        }}
-                      >
-                        <label
-                          style={{
-                            fontSize: 10,
-                            color: "var(--color-texto-suave)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Intervalo de Fotogramas:
-                        </label>
-                        <select
-                          value={intervaloEscaneo}
-                          onChange={(e) => setIntervaloEscaneo(e.target.value)}
-                          style={{
-                            background: "var(--color-fondo)",
-                            border: "1px solid var(--color-borde)",
-                            color: "var(--color-texto)",
-                            borderRadius: 6,
-                            padding: 6,
-                            fontSize: 11,
-                            outline: "none",
-                          }}
-                        >
-                          <option value="manual">
-                            Manual (Sólo al presionar botón)
-                          </option>
-                          <option value="1000">Cada 1 Segundo</option>
-                          <option value="3000">Cada 3 Segundos</option>
-                          <option value="5000">Cada 5 Segundos</option>
-                        </select>
-                      </div>
-
-                      {/* AJUSTES AVANZADOS DE IA */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                          borderTop: "1px solid var(--color-borde)",
-                          paddingTop: 10,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: "var(--color-dorado)",
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          Configuración Avanzada
-                        </span>
-
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              fontSize: 10,
-                              color: "var(--color-texto-suave)",
-                            }}
-                          >
-                            <span>Temperatura de la IA:</span>
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                fontFamily: "monospace",
-                              }}
-                            >
-                              {temperaturaIA}
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.1"
-                            max="1.0"
-                            step="0.1"
-                            value={temperaturaIA}
-                            onChange={(e) =>
-                              guardarAjusteIA(
-                                "temperatura",
-                                Number(e.target.value),
-                              )
-                            }
-                            style={{
-                              accentColor: "var(--color-dorado)",
-                              cursor: "pointer",
-                            }}
-                          />
-                        </div>
-
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: 8,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                            }}
-                          >
-                            <label
-                              style={{
-                                fontSize: 9,
-                                color: "var(--color-texto-suave)",
-                              }}
-                            >
-                              Filtro de Detección:
-                            </label>
-                            <select
-                              value={filtroDeteccion}
-                              onChange={(e) =>
-                                guardarAjusteIA("filtro", e.target.value)
-                              }
-                              style={{
-                                background: "var(--color-fondo)",
-                                border: "1px solid var(--color-borde)",
-                                color: "var(--color-texto)",
-                                borderRadius: 4,
-                                padding: 4,
-                                fontSize: 10,
-                                outline: "none",
-                              }}
-                            >
-                              <option value="preciso">Precisión Máxima</option>
-                              <option value="balanceado">Balanceado</option>
-                              <option value="sensible">
-                                Sensibilidad Extrema
-                              </option>
-                            </select>
-                          </div>
-
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                            }}
-                          >
-                            <label
-                              style={{
-                                fontSize: 9,
-                                color: "var(--color-texto-suave)",
-                              }}
-                            >
-                              Tasa de Muestreo:
-                            </label>
-                            <select
-                              value={tasaMuestreo}
-                              onChange={(e) =>
-                                guardarAjusteIA("tasa", Number(e.target.value))
-                              }
-                              style={{
-                                background: "var(--color-fondo)",
-                                border: "1px solid var(--color-borde)",
-                                color: "var(--color-texto)",
-                                borderRadius: 4,
-                                padding: 4,
-                                fontSize: 10,
-                                outline: "none",
-                              }}
-                            >
-                              <option value={1}>1 fotograma / s</option>
-                              <option value={3}>3 fotogramas / s</option>
-                              <option value={5}>5 fotogramas / s</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                        <button
-                          onClick={analizarFrameActual}
-                          disabled={
-                            ollamaEstado === "Analizando..." || barriendoIA
-                          }
-                          style={{
-                            flex: 1,
-                            background: "var(--color-superficie-2)",
-                            border: "1px solid var(--color-borde)",
-                            color: "var(--color-texto)",
-                            borderRadius: 6,
-                            padding: "8px 0",
-                            fontSize: 11,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            opacity: barriendoIA ? 0.5 : 1,
-                          }}
-                        >
-                          {ollamaEstado === "Analizando..."
-                            ? "Analizando..."
-                            : "Analizar Frame"}
-                        </button>
-
-                        <button
-                          onClick={toggleEscaneoIA}
-                          disabled={barriendoIA}
-                          style={{
-                            flex: 1,
-                            background: escaneoActivoRef.current
-                              ? "rgba(231,76,60,0.15)"
-                              : "rgba(39,174,96,0.15)",
-                            border: `1px solid ${escaneoActivoRef.current ? "var(--color-rojo-suave)" : "var(--color-exito)"}`,
-                            color: escaneoActivoRef.current
-                              ? "var(--color-rojo-suave)"
-                              : "var(--color-exito)",
-                            borderRadius: 6,
-                            padding: "8px 0",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            opacity: barriendoIA ? 0.5 : 1,
-                          }}
-                        >
-                          {escaneoActivoRef.current
-                            ? "Detener IA"
-                            : "Escanear IA"}
-                        </button>
-                      </div>
-
-                      {/* Barrido Completo de Video */}
-                      <div
-                        style={{
-                          borderTop: "1px solid var(--color-borde)",
-                          paddingTop: 10,
-                          marginTop: 4,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "var(--color-dorado)",
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          Barrido Completo de Video
-                        </span>
-
-                        {!barriendoIA ? (
-                          <>
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 6,
-                                alignItems: "center",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--color-texto-suave)",
-                                  flexShrink: 0,
-                                }}
-                              >
-                                Paso de Barrido:
-                              </span>
-                              <select
-                                value={stepBarrido}
-                                onChange={(e) =>
-                                  setStepBarrido(Number(e.target.value))
-                                }
-                                style={{
-                                  flex: 1,
-                                  background: "var(--color-fondo)",
-                                  border: "1px solid var(--color-borde)",
-                                  color: "var(--color-texto)",
-                                  borderRadius: 6,
-                                  padding: "4px 6px",
-                                  fontSize: 10,
-                                  outline: "none",
-                                }}
-                              >
-                                <option value="0.5">
-                                  Cada 0.5 Segundos (Precisión Máxima)
-                                </option>
-                                <option value="1.0">Cada 1.0 Segundo</option>
-                                <option value="2.0">Cada 2.0 Segundos</option>
-                                <option value="3.0">Cada 3.0 Segundos</option>
-                              </select>
-                            </div>
-                            <button
-                              onClick={iniciarBarridoIA}
-                              disabled={escaneoActivoRef.current}
-                              style={{
-                                background: "var(--color-dorado-alfa)",
-                                border: "1px solid var(--color-dorado)",
-                                color: "var(--color-dorado)",
-                                borderRadius: 6,
-                                padding: "8px 0",
-                                fontSize: 11,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                opacity: escaneoActivoRef.current ? 0.5 : 1,
-                              }}
-                            >
-                              🚀 Iniciar Barrido Automático
-                            </button>
-                          </>
-                        ) : (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 6,
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                fontSize: 10,
-                                color: "var(--color-texto)",
-                              }}
-                            >
-                              <span>Progreso de Análisis:</span>
-                              <span style={{ fontWeight: 700 }}>
-                                {progresoBarrido}%
-                              </span>
-                            </div>
-                            <div
-                              style={{
-                                background: "var(--color-superficie-2)",
-                                height: 6,
-                                borderRadius: 3,
-                                overflow: "hidden",
-                                border: "1px solid var(--color-borde)",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: `${progresoBarrido}%`,
-                                  background: "var(--color-dorado)",
-                                  height: "100%",
-                                  borderRadius: 3,
-                                  transition: "width 0.2s ease",
-                                }}
-                              />
-                            </div>
-                            <button
-                              onClick={detenerBarridoIA}
-                              style={{
-                                background: "rgba(231,76,60,0.15)",
-                                border: "1px solid var(--color-rojo-suave)",
-                                color: "var(--color-rojo-suave)",
-                                borderRadius: 6,
-                                padding: "8px 0",
-                                fontSize: 11,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                              }}
-                            >
-                              ⏹️ Detener Barrido IA
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* VEREDICTO ESTRATÉGICO EINSTEIN */}
-                      <div
-                        style={{
-                          borderTop: "1px solid var(--color-borde)",
-                          paddingTop: 10,
-                          marginTop: 4,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "var(--color-dorado)",
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          Veredicto Estratégico
-                        </span>
-                        <button
-                          onClick={obtenerVeredictoEinstein}
-                          disabled={cargandoVeredicto || timeline.length === 0}
-                          style={{
-                            background: "var(--color-dorado-alfa)",
-                            border: "1px solid var(--color-dorado)",
-                            borderRadius: 6,
-                            color: "var(--color-dorado)",
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: "8px 0",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 6,
-                            opacity: timeline.length === 0 ? 0.5 : 1,
-                          }}
-                        >
-                          <Zap size={12} />{" "}
-                          {cargandoVeredicto
-                            ? "Compilando..."
-                            : "Veredicto Estratégico Einstein"}
-                        </button>
-
-                        {veredictoEinstein && (
-                          <div
-                            style={{
-                              background: "var(--color-fondo)",
-                              border: "1px solid var(--color-borde)",
-                              borderRadius: 6,
-                              padding: 10,
-                              maxHeight: 150,
-                              overflowY: "auto",
-                              fontSize: 10,
-                              lineHeight: 1.5,
-                              color: "var(--color-texto-suave)",
-                              whiteSpace: "pre-wrap",
-                              fontStyle: cargandoVeredicto
-                                ? "italic"
-                                : "normal",
-                              fontFamily: "sans-serif",
-                            }}
-                          >
-                            {veredictoEinstein}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Consola de Eventos IA */}
-                    <div
-                      style={{
-                        flex: 1,
-                        minHeight: 180,
-                        background: "var(--color-fondo)",
-                        border: "1px solid var(--color-borde)",
-                        borderRadius: 8,
-                        padding: 12,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 8,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: "var(--color-texto-suave)",
-                          textTransform: "uppercase",
-                          letterSpacing: 0.5,
-                        }}
-                      >
-                        Consola Asistente IA
-                      </span>
-                      <div
-                        style={{
-                          flex: 1,
-                          overflowY: "auto",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                          fontFamily: "monospace",
-                          fontSize: 10,
-                          color: "var(--color-texto-suave)",
-                        }}
-                      >
-                        {logsIA.length === 0 ? (
-                          <span style={{ fontStyle: "italic", opacity: 0.5 }}>
-                            Consola inactiva. Esperando análisis...
-                          </span>
-                        ) : (
-                          logsIA.map((log, i) => (
-                            <div
-                              key={i}
-                              style={{
-                                borderBottom:
-                                  "1px solid rgba(255,255,255,0.02)",
-                                paddingBottom: 4,
-                                color: log.includes("Golpe Detectado")
-                                  ? "var(--color-exito)"
-                                  : "var(--color-texto-suave)",
-                              }}
-                            >
-                              {log}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* PANEL VOZ */}
-                {panelActivo === "voz" && (
-                  <motion.div
-                    key="voz"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      flex: 1,
-                      minHeight: 0,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: 16,
-                        borderBottom: "1px solid var(--color-borde)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {!vozSoportada ? (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--color-rojo-suave)",
-                            textAlign: "center",
-                            padding: 8,
-                          }}
-                        >
-                          Usa Chrome o Edge para activar el control por voz.
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 10,
-                          }}
-                        >
-                          <button
-                            onClick={() =>
-                              escuchando ? detenerEscucha() : iniciarEscucha()
-                            }
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 10,
-                              padding: "12px",
-                              borderRadius: 8,
-                              border: `1px solid ${escuchando ? "rgba(192, 57, 43, 0.4)" : "rgba(41, 128, 185, 0.3)"}`,
-                              cursor: "pointer",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                              transition: "all 0.2s",
-                              background: escuchando
-                                ? "rgba(192, 57, 43, 0.12)"
-                                : "rgba(41, 128, 185, 0.08)",
-                              color: escuchando
-                                ? "var(--color-rojo-suave)"
-                                : "var(--color-azul-suave)",
-                            }}
-                          >
-                            {escuchando ? (
-                              <MicOff size={18} />
-                            ) : (
-                              <Mic size={18} />
-                            )}
-                            {escuchando
-                              ? "Grabando — Detener"
-                              : "Iniciar Narración de Voz"}
-                          </button>
-
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <div
-                              style={{
-                                flex: 1,
-                                background: "var(--color-superficie-2)",
-                                borderRadius: 6,
-                                padding: "6px 10px",
-                                textAlign: "center",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 16,
-                                  fontWeight: 700,
-                                  color: "var(--color-texto)",
-                                }}
-                              >
-                                {totalFrases}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--color-texto-suave)",
-                                }}
-                              >
-                                Frases
-                              </div>
-                            </div>
-                            <div
-                              style={{
-                                flex: 1,
-                                background: "var(--color-superficie-2)",
-                                borderRadius: 6,
-                                padding: "6px 10px",
-                                textAlign: "center",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontSize: 16,
-                                  fontWeight: 700,
-                                  color: "var(--color-dorado)",
-                                }}
-                              >
-                                {totalChunks}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: 10,
-                                  color: "var(--color-texto-suave)",
-                                }}
-                              >
-                                Bloques 5min
-                              </div>
-                            </div>
-                          </div>
-                          {ultimaFrase && (
-                            <div
-                              style={{
-                                background: "var(--color-superficie-2)",
-                                borderRadius: 8,
-                                padding: "8px 12px",
-                                fontSize: 12,
-                              }}
-                            >
-                              <span
-                                style={{
-                                  color: "var(--color-texto-suave)",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Escuché:{" "}
-                              </span>
-                              <span
-                                style={{
-                                  color: "var(--color-texto)",
-                                  fontStyle: "italic",
-                                }}
-                              >
-                                "{ultimaFrase}"
-                              </span>
-                            </div>
-                          )}
-                          <AnimatePresence>
-                            {ultimoComando && (
-                              <motion.div
-                                initial={{ opacity: 0, y: -8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                style={{
-                                  background: "var(--color-dorado-alfa)",
-                                  border: "1px solid var(--color-dorado)",
-                                  borderRadius: 8,
-                                  padding: "8px 14px",
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  color: "var(--color-dorado)",
-                                  textAlign: "center",
-                                }}
-                              >
-                                Comando: {ultimoComando}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        padding: "10px 16px",
-                        borderBottom: "1px solid var(--color-borde)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "var(--color-texto-suave)",
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          marginBottom: 6,
-                        }}
-                      >
-                        Comandos Disponibles
-                      </div>
-                      <div
-                        style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
-                      >
-                        {[
-                          '"Play"',
-                          '"Pausa"',
-                          '"Jab"',
-                          '"Cross"',
-                          '"Gancho"',
-                          '"Uppercut"',
-                          '"Esquiva"',
-                          '"Bloqueo"',
-                          '"Finta"',
-                          '"Rojo"',
-                          '"Azul"',
-                          '"Conectado"',
-                          '"Errado"',
-                        ].map((cmd) => (
-                          <span
-                            key={cmd}
-                            style={{
-                              fontSize: 10,
-                              background: "rgba(255,255,255,0.05)",
-                              border: "1px solid var(--color-borde)",
-                              borderRadius: 4,
-                              padding: "2px 6px",
-                              color: "var(--color-texto-suave)",
-                              fontFamily: "monospace",
-                            }}
-                          >
-                            {cmd}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        flex: 1,
-                        overflowY: "auto",
-                        padding: 16,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 16,
-                      }}
-                    >
-                      {/* AI Audio Tagging Panel */}
-                      <div
-                        style={{
-                          background: "rgba(155,89,182,0.06)",
-                          border: "1px solid rgba(155,89,182,0.2)",
-                          borderRadius: 8,
-                          padding: 12,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            marginBottom: 8,
-                          }}
-                        >
-                          <Cpu size={14} color="#9b59b6" />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              color: "#9b59b6",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            AI Audio Tagging
-                          </span>
-                        </div>
-                        <p
-                          style={{
-                            fontSize: 10,
-                            color: "var(--color-texto-suave)",
-                            margin: "0 0 8px 0",
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          Etiquetas sugeridas automáticamente según la narración
-                          de audio detectada:
-                        </p>
-                        <div
-                          style={{ display: "flex", flexWrap: "wrap", gap: 6 }}
-                        >
-                          {sugerirEtiquetasDeAudio().map((tag) => (
-                            <button
-                              key={tag}
-                              onClick={() => {
-                                registrarEvento(tag, esquinaDestino);
-                                if (window.api?.sonido?.reproducir) {
-                                  window.api.sonido.reproducir({
-                                    frecuencia: 800,
-                                    duracion: 0.05,
-                                  });
-                                }
-                              }}
-                              style={{
-                                fontSize: 10,
-                                background: "rgba(155,89,182,0.12)",
-                                border: "1px solid rgba(155,89,182,0.4)",
-                                color: "#e0b0ff",
-                                padding: "3px 8px",
-                                borderRadius: 12,
-                                cursor: "pointer",
-                                fontWeight: 600,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                            >
-                              <span>+</span> {tag}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Historial de Transcripción (Clickable) */}
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--color-texto-suave)",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            marginBottom: 10,
-                          }}
-                        >
-                          Historial de Narración
-                        </div>
-                        {(() => {
-                          const logCompleto = obtenerLogCompleto
-                            ? obtenerLogCompleto()
-                            : [];
-                          if (logCompleto.length === 0) {
-                            return (
-                              <p
-                                style={{
-                                  color: "var(--color-texto-suave)",
-                                  fontSize: 12,
-                                  fontStyle: "italic",
-                                  margin: 0,
-                                }}
-                              >
-                                Las frases y anotaciones de voz aparecerán aquí
-                                en tiempo real.
-                              </p>
-                            );
-                          }
-                          return (
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 6,
-                                maxHeight: 180,
-                                overflowY: "auto",
-                                paddingRight: 4,
-                              }}
-                            >
-                              {logCompleto.map((item, idx) => (
-                                <div
-                                  key={idx}
-                                  onClick={() => {
-                                    if (videoRef.current) {
-                                      videoRef.current.currentTime =
-                                        item.tiempoVideo;
-                                      setCurrentTime(item.tiempoVideo);
-                                    }
-                                  }}
-                                  style={{
-                                    padding: "8px 10px",
-                                    background: item.esComando
-                                      ? "rgba(212,175,55,0.06)"
-                                      : "rgba(255,255,255,0.03)",
-                                    border: `1px solid ${item.esComando ? "var(--color-dorado-alfa)" : "var(--color-borde)"}`,
-                                    borderRadius: 6,
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                    transition: "all 0.2s",
-                                  }}
-                                  onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background =
-                                      "rgba(255,255,255,0.08)")
-                                  }
-                                  onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background =
-                                      item.esComando
-                                        ? "rgba(212,175,55,0.06)"
-                                        : "rgba(255,255,255,0.03)")
-                                  }
-                                >
-                                  <span
-                                    style={{
-                                      fontSize: 9,
-                                      fontFamily: "monospace",
-                                      color: "var(--color-dorado)",
-                                      background: "rgba(0,0,0,0.2)",
-                                      padding: "2px 4px",
-                                      borderRadius: 4,
-                                    }}
-                                  >
-                                    {formatTime(item.tiempoVideo)}
-                                  </span>
-                                  <div
-                                    style={{
-                                      flex: 1,
-                                      fontSize: 11,
-                                      color: "var(--color-texto)",
-                                    }}
-                                  >
-                                    {item.esComando ? (
-                                      <span>
-                                        ⚡ Comando:{" "}
-                                        <strong>{item.accionDetectada}</strong>
-                                      </span>
-                                    ) : (
-                                      <span>"{item.texto}"</span>
-                                    )}
-                                  </div>
-                                  <span
-                                    style={{
-                                      fontSize: 9,
-                                      color: "var(--color-texto-muted)",
-                                    }}
-                                  >
-                                    R{item.round}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Resumen por Round */}
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--color-texto-suave)",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            marginBottom: 10,
-                          }}
-                        >
-                          Resumen por Round
-                        </div>
-                        {(() => {
-                          const resumen = generarResumenPorRound();
-                          const rounds = Object.keys(resumen);
-                          if (rounds.length === 0) {
-                            return (
-                              <p
-                                style={{
-                                  color: "var(--color-texto-suave)",
-                                  fontSize: 12,
-                                  fontStyle: "italic",
-                                  margin: 0,
-                                }}
-                              >
-                                Activá el micrófono y comenzá a narrar. El
-                                resumen se agrupará aquí.
-                              </p>
-                            );
-                          }
-                          return rounds.map((r) => (
-                            <div key={r} style={{ marginBottom: 14 }}>
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  color: "var(--color-dorado)",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.05em",
-                                  marginBottom: 6,
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                }}
-                              >
-                                <span>Round {r}</span>
-                                <span
-                                  style={{
-                                    color: "var(--color-texto-suave)",
-                                    fontWeight: 400,
-                                  }}
-                                >
-                                  {resumen[r].totalComandos} comandos
-                                </span>
-                              </div>
-                              <div
-                                style={{
-                                  background: "var(--color-superficie-2)",
-                                  borderRadius: 8,
-                                  padding: "10px 12px",
-                                  fontSize: 12,
-                                  color: "var(--color-texto)",
-                                  lineHeight: 1.7,
-                                  whiteSpace: "pre-wrap",
-                                  fontStyle: resumen[r].notes.startsWith(
-                                    "Sin notas",
-                                  )
-                                    ? "italic"
-                                    : "normal",
-                                  borderLeft: "2px solid var(--color-dorado)",
-                                }}
-                              >
-                                {resumen[r].notes}
-                              </div>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        padding: 12,
-                        borderTop: "1px solid var(--color-borde)",
-                        display: "flex",
-                        gap: 8,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <button
-                        onClick={() => exportarSesion("Sesion_Daneri")}
-                        disabled={totalFrases === 0}
-                        style={{
-                          flex: 1.5,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 6,
-                          padding: "10px",
-                          background:
-                            totalFrases > 0
-                              ? "rgba(52,152,219,0.08)"
-                              : "transparent",
-                          border: "1px solid rgba(52,152,219,0.3)",
-                          borderRadius: 6,
-                          color:
-                            totalFrases > 0
-                              ? "var(--color-azul-suave)"
-                              : "var(--color-texto-muted)",
-                          fontSize: 11,
-                          fontWeight: 600,
-                          cursor: totalFrases > 0 ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        <Download size={14} /> Exportar .md
-                      </button>
-                      <button
-                        className="boton-secundario"
-                        style={{ flex: 1, fontSize: 11, padding: "10px" }}
-                        onClick={limpiarLog}
-                      >
-                        Limpiar Log
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
               </AnimatePresence>
             </div>
+
+            {/* COLLAPSIBLE AUXILIARY PANEL FOR AI & VOICE */}
+            <AnimatePresence>
+              {panelAuxiliar && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "clamp(200px, 28vh, 320px)", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  style={{
+                    borderTop: "1px solid var(--color-borde)",
+                    background: "var(--color-superficie-1)",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                  }}
+                >
+                  {/* Panel Header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      borderBottom: "1px solid var(--color-borde)",
+                      background: "rgba(255, 255, 255, 0.02)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        color: panelAuxiliar === 'ia' ? '#2ec771' : 'var(--color-azul-suave)',
+                        letterSpacing: 0.5,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {panelAuxiliar === 'ia' ? "🧠 Asistente IA Einstein" : "🎙️ Dictado de Voz"}
+                    </span>
+                    <button
+                      onClick={() => setPanelAuxiliar(null)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "var(--color-texto-muted)",
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Panel Content (Scrollable) */}
+                  <div
+                    style={{
+                      flex: 1,
+                      overflowY: "auto",
+                      padding: 10,
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
+                    {panelAuxiliar === "ia" && (
+                      <SidebarAsistenteIA
+                        ollamaDisponible={ollamaDisponible}
+                        ollamaModelo={ollamaModelo}
+                        setOllamaModelo={setOllamaModelo}
+                        intervaloEscaneo={intervaloEscaneo}
+                        setIntervaloEscaneo={setIntervaloEscaneo}
+                        temperaturaIA={temperaturaIA}
+                        filtroDeteccion={filtroDeteccion}
+                        tasaMuestreo={tasaMuestreo}
+                        guardarAjusteIA={guardarAjusteIA}
+                        analizarFrameActual={analizarFrameActual}
+                        ollamaEstado={ollamaEstado}
+                        barriendoIA={barriendoIA}
+                        toggleEscaneoIA={toggleEscaneoIA}
+                        escaneoActivo={escaneoActivoRef.current}
+                        stepBarrido={stepBarrido}
+                        setStepBarrido={setStepBarrido}
+                        iniciarBarridoIA={iniciarBarridoIA}
+                        progresoBarrido={progresoBarrido}
+                        detenerBarridoIA={detenerBarridoIA}
+                        obtenerVeredictoEinstein={obtenerVeredictoEinstein}
+                        cargandoVeredicto={cargandoVeredicto}
+                        timeline={timeline}
+                        veredictoEinstein={veredictoEinstein}
+                        logsIA={logsIA}
+                      />
+                    )}
+                    {panelAuxiliar === "voz" && (
+                      <SidebarVoz
+                        vozSoportada={vozSoportada}
+                        escuchando={escuchando}
+                        detenerEscucha={detenerEscucha}
+                        iniciarEscucha={iniciarEscucha}
+                        totalFrases={totalFrases}
+                        totalChunks={totalChunks}
+                        ultimaFrase={ultimaFrase}
+                        ultimoComando={ultimoComando}
+                        generarResumenPorRound={generarResumenPorRound}
+                        obtenerLogCompleto={obtenerLogCompleto}
+                        sugerirEtiquetasDeAudio={sugerirEtiquetasDeAudio}
+                        registrarEvento={registrarEvento}
+                        esquinaDestino={esquinaDestino}
+                        videoRef={videoRef}
+                        setCurrentTime={setCurrentTime}
+                        exportarSesion={exportarSesion}
+                        limpiarLog={limpiarLog}
+                      />
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* PERSISTENT FOOTER FOR SIDEBAR */}
             <div
@@ -6562,397 +3839,29 @@ export default function EditorTactico() {
 
       {/* MODAL PRECISION EDIT POPUP */}
       {eventoAEditar && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(10,10,10,0.8)",
-            backdropFilter: "blur(8px)",
-            zIndex: 99999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
+        <PrecisionEditModal
+          evento={eventoAEditar}
+          currentTime={currentTime}
+          duracionVideo={videoDuration || (videoRef.current && !isNaN(videoRef.current.duration) ? videoRef.current.duration : 0)}
+          onClose={() => setEventoAEditar(null)}
+          onSave={(editedEvent) => {
+            pushStateToHistory();
+            setTimeline((prev) =>
+              prev.map((ev) =>
+                ev.id === editedEvent.id ? editedEvent : ev
+              )
+            );
+            setEventoAEditar(null);
+            
+            // Si el evento editado es el actual en bucle, ajustar rango
+            if (bucleEventoId === editedEvent.id && editedEvent.timestamp !== undefined) {
+              const t = editedEvent.timestamp;
+              const start = Math.max(0, t - 2);
+              const end = t + 2;
+              setBucleRango({ start, end });
+            }
           }}
-        >
-          <div
-            style={{
-              background: "var(--color-superficie)",
-              border: "1px solid var(--color-borde)",
-              borderRadius: 16,
-              width: "100%",
-              maxWidth: 420,
-              padding: 24,
-              boxShadow: "0 24px 48px rgba(0,0,0,0.6)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "var(--color-dorado)",
-                }}
-              >
-                Edición de Precisión Táctica
-              </h3>
-              <button
-                onClick={() => setEventoAEditar(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--color-texto-suave)",
-                  cursor: "pointer",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {/* Tipo de Golpe/Acción */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label
-                  style={{
-                    fontSize: 10,
-                    color: "var(--color-texto-suave)",
-                    fontWeight: 600,
-                  }}
-                >
-                  TIPO DE ACCIÓN:
-                </label>
-                <select
-                  value={eventoAEditar.tipo}
-                  onChange={(e) => {
-                    const nuevoTipo = e.target.value;
-                    const esGolpe = ["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(nuevoTipo);
-                    setEventoAEditar({ 
-                      ...eventoAEditar, 
-                      tipo: nuevoTipo,
-                      ...(esGolpe && !eventoAEditar.hasOwnProperty("resultado") ? { resultado: "Conectado" } : {})
-                    });
-                  }}
-                  style={{
-                    background: "#1e1e28",
-                    border: "1px solid var(--color-borde)",
-                    color: "#ffffff",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                    fontSize: 12,
-                    outline: "none",
-                  }}
-                >
-                  <option value="Jab" style={{ background: "#1e1e28", color: "#ffffff" }}>Jab</option>
-                  <option value="Recto" style={{ background: "#1e1e28", color: "#ffffff" }}>Recto</option>
-                  <option value="Cross" style={{ background: "#1e1e28", color: "#ffffff" }}>Cross</option>
-                  <option value="Gancho" style={{ background: "#1e1e28", color: "#ffffff" }}>Gancho</option>
-                  <option value="Uppercut" style={{ background: "#1e1e28", color: "#ffffff" }}>Uppercut</option>
-                  <option value="Swing" style={{ background: "#1e1e28", color: "#ffffff" }}>Swing</option>
-                  <option value="Finta" style={{ background: "#1e1e28", color: "#ffffff" }}>Finta</option>
-                  <option value="Esquiva" style={{ background: "#1e1e28", color: "#ffffff" }}>Esquiva</option>
-                  <option value="Bloqueo" style={{ background: "#1e1e28", color: "#ffffff" }}>Bloqueo</option>
-                  <option value="Clinch" style={{ background: "#1e1e28", color: "#ffffff" }}>Clinch</option>
-                  <option value="Pivoteo" style={{ background: "#1e1e28", color: "#ffffff" }}>Pivoteo</option>
-                  <option value="Marca General" style={{ background: "#1e1e28", color: "#ffffff" }}>Marca General</option>
-                  {/* Eventos Legados */}
-                  <option value="Golpe Conectado" style={{ background: "#1e1e28", color: "#ffffff" }}>Golpe Conectado (Legacy)</option>
-                  <option value="Golpe Errado" style={{ background: "#1e1e28", color: "#ffffff" }}>Golpe Errado (Legacy)</option>
-                </select>
-              </div>
-
-              {/* Resultado del Golpe (Exclusivo para Golpes Ofensivos con diseño Premium Glassmorphic) */}
-              {["Jab", "Recto", "Cross", "Gancho", "Uppercut", "Swing"].includes(eventoAEditar.tipo) && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label
-                    style={{
-                      fontSize: 10,
-                      color: "var(--color-texto-suave)",
-                      fontWeight: 600,
-                    }}
-                  >
-                    RESULTADO DEL GOLPE:
-                  </label>
-                  <div
-                    style={{
-                      display: "flex",
-                      background: "rgba(255, 255, 255, 0.05)",
-                      borderRadius: 20,
-                      padding: 4,
-                      border: "1px solid var(--color-borde)",
-                      backdropFilter: "blur(4px)",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEventoAEditar({ ...eventoAEditar, resultado: "Conectado" })
-                      }
-                      style={{
-                        flex: 1,
-                        padding: "6px 12px",
-                        borderRadius: 16,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        background:
-                          eventoAEditar.resultado !== "Errado"
-                            ? "linear-gradient(135deg, rgba(39, 174, 96, 0.25) 0%, rgba(39, 174, 96, 0.05) 100%)"
-                            : "transparent",
-                        color:
-                          eventoAEditar.resultado !== "Errado"
-                            ? "#2ECC71"
-                            : "var(--color-texto-suave)",
-                        border:
-                          eventoAEditar.resultado !== "Errado"
-                            ? "1px solid rgba(46, 204, 113, 0.3)"
-                            : "1px solid transparent",
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      🟢 Conectado
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEventoAEditar({ ...eventoAEditar, resultado: "Errado" })
-                      }
-                      style={{
-                        flex: 1,
-                        padding: "6px 12px",
-                        borderRadius: 16,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        background:
-                          eventoAEditar.resultado === "Errado"
-                            ? "linear-gradient(135deg, rgba(231, 76, 60, 0.25) 0%, rgba(231, 76, 60, 0.05) 100%)"
-                            : "transparent",
-                        color:
-                          eventoAEditar.resultado === "Errado"
-                            ? "#E74C3C"
-                            : "var(--color-texto-suave)",
-                        border:
-                          eventoAEditar.resultado === "Errado"
-                            ? "1px solid rgba(231, 76, 60, 0.3)"
-                            : "1px solid transparent",
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      🔴 Errado
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Esquina / Rincón */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label
-                  style={{
-                    fontSize: 10,
-                    color: "var(--color-texto-suave)",
-                    fontWeight: 600,
-                  }}
-                >
-                  ESQUINA:
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() =>
-                      setEventoAEditar({ ...eventoAEditar, esquina: "roja" })
-                    }
-                    style={{
-                      flex: 1,
-                      padding: "8px",
-                      borderRadius: 6,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      border:
-                        eventoAEditar.esquina === "roja"
-                          ? "2px solid var(--color-rojo-suave)"
-                          : "1px solid var(--color-borde)",
-                      background:
-                        eventoAEditar.esquina === "roja"
-                          ? "rgba(231,76,60,0.15)"
-                          : "transparent",
-                      color:
-                        eventoAEditar.esquina === "roja"
-                          ? "var(--color-rojo-suave)"
-                          : "var(--color-texto-suave)",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    Rincón Rojo
-                  </button>
-                  <button
-                    onClick={() =>
-                      setEventoAEditar({ ...eventoAEditar, esquina: "azul" })
-                    }
-                    style={{
-                      flex: 1,
-                      padding: "8px",
-                      borderRadius: 6,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      border:
-                        eventoAEditar.esquina === "azul"
-                          ? "2px solid var(--color-azul-suave)"
-                          : "1px solid var(--color-borde)",
-                      background:
-                        eventoAEditar.esquina === "azul"
-                          ? "rgba(52,152,219,0.15)"
-                          : "transparent",
-                      color:
-                        eventoAEditar.esquina === "azul"
-                          ? "var(--color-azul-suave)"
-                          : "var(--color-texto-suave)",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    Rincón Azul
-                  </button>
-                </div>
-              </div>
-
-              {/* Zona de Impacto (Lugar) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label
-                  style={{
-                    fontSize: 10,
-                    color: "var(--color-texto-suave)",
-                    fontWeight: 600,
-                  }}
-                >
-                  📍 ZONA DE IMPACTO (LUGAR):
-                </label>
-                <input
-                  type="text"
-                  value={eventoAEditar.lugar || ""}
-                  onChange={(e) =>
-                    setEventoAEditar({ ...eventoAEditar, lugar: e.target.value })
-                  }
-                  placeholder="Añade zona de impacto (ej: Sien, Hígado, Mandíbula - opcional)..."
-                  style={{
-                    background: "var(--color-superficie-2)",
-                    border: "1px solid var(--color-borde)",
-                    color: "var(--color-texto)",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                    fontSize: 12,
-                    outline: "none",
-                    transition: "all 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "var(--color-dorado)";
-                    e.target.style.boxShadow = "0 0 5px rgba(212, 175, 55, 0.2)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "var(--color-borde)";
-                    e.target.style.boxShadow = "none";
-                  }}
-                />
-              </div>
-
-              {/* Nota / Observación */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label
-                  style={{
-                    fontSize: 10,
-                    color: "var(--color-texto-suave)",
-                    fontWeight: 600,
-                  }}
-                >
-                  OBSERVACIÓN TÁCTICA:
-                </label>
-                <textarea
-                  value={eventoAEditar.nota || ""}
-                  onChange={(e) =>
-                    setEventoAEditar({ ...eventoAEditar, nota: e.target.value })
-                  }
-                  placeholder="Añade detalles del impacto o nota técnica..."
-                  rows={3}
-                  style={{
-                    background: "var(--color-superficie-2)",
-                    border: "1px solid var(--color-borde)",
-                    color: "var(--color-texto)",
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                    fontSize: 12,
-                    outline: "none",
-                    resize: "none",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-              <button
-                onClick={() => setEventoAEditar(null)}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  borderRadius: 8,
-                  background: "transparent",
-                  border: "1px solid var(--color-borde)",
-                  color: "var(--color-texto-suave)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  pushStateToHistory();
-                  setTimeline((prev) =>
-                    prev.map((ev) =>
-                      ev.id === eventoAEditar.id ? eventoAEditar : ev,
-                    ),
-                  );
-                  setEventoAEditar(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  borderRadius: 8,
-                  background: "var(--color-dorado)",
-                  border: "none",
-                  color: "var(--color-fondo)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                Guardar Cambios
-              </button>
-            </div>
-            <div
-              style={{
-                fontSize: 9,
-                color: "var(--color-texto-muted)",
-                textAlign: "center",
-              }}
-            >
-              Atajo: <kbd>Enter</kbd> para guardar · <kbd>Esc</kbd> para
-              cancelar
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {/* MODAL CONFIRMACIÓN BORRADOR RESTAURACIÓN */}
@@ -7718,7 +4627,7 @@ export default function EditorTactico() {
 
 const estilos = {
   pagina: {
-    padding: "32px 40px",
+    padding: "clamp(6px, 1vh, 16px) clamp(12px, 2vw, 24px)",
     display: "flex",
     flexDirection: "column",
     height: "100%",
@@ -7798,10 +4707,32 @@ const estilos = {
   btnColor: { width: 20, height: 20, borderRadius: "50%", cursor: "pointer" },
   layoutPrincipal: {
     display: "flex",
+    flexDirection: "row",
     flex: 1,
-    gap: 24,
+    gap: "clamp(8px, 1.2vw, 12px)",
     minHeight: 0,
     overflow: "hidden",
+  },
+  seccionSuperiorVideo: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "clamp(6px, 1vh, 10px)",
+    width: "100%",
+    minHeight: 0,
+  },
+  columnaIzquierdaEditor: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "clamp(8px, 1.2vh, 12px)",
+    minWidth: 0,
+    minHeight: 0,
+    overflow: "hidden",
+  },
+  seccionTecladoIzquierdo: {
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minHeight: 0,
   },
   zonaVideo: {
     flex: 3,
@@ -7813,11 +4744,13 @@ const estilos = {
     overflow: "hidden",
   },
   reproductorWrapper: {
-    flex: 1,
+    position: "relative",
+    aspectRatio: "16/9",
+    maxHeight: "clamp(180px, 28vh, 360px)",
+    width: "100%",
     background: "var(--color-fondo)",
     borderRadius: 8,
     border: "1px solid var(--color-borde)",
-    position: "relative",
     overflow: "hidden",
   },
   videoPlaceholder: {
@@ -7844,9 +4777,9 @@ const estilos = {
   playbackBar: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    gap: 12,
     background: "var(--color-superficie-2)",
-    padding: "12px 24px",
+    padding: "6px 16px",
     borderRadius: 8,
     border: "1px solid var(--color-borde)",
   },
@@ -7862,8 +4795,8 @@ const estilos = {
   btnPlayMain: {
     background: "var(--color-dorado)",
     border: "none",
-    width: 44,
-    height: 44,
+    width: 34,
+    height: 34,
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
@@ -7873,7 +4806,7 @@ const estilos = {
   },
   timeDisplay: {
     fontFamily: "monospace",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 600,
     color: "var(--color-texto)",
     letterSpacing: "1px",

@@ -43,6 +43,8 @@ export default function BarraLateral() {
     { ruta: '/seed',     icono: FlaskConical,     etiqueta: 'Carga de Datos' }
   ]
 
+  const isMini = location.pathname.startsWith('/editor');
+
   const handleLogout = async () => {
     try {
       await signOut(auth)
@@ -52,19 +54,29 @@ export default function BarraLateral() {
   }
 
   return (
-    <aside style={estilos.sidebar}>
+    <aside style={{
+      ...estilos.sidebar,
+      width: isMini ? '72px' : 'var(--sidebar-ancho)',
+      minWidth: isMini ? '72px' : 'var(--sidebar-ancho)',
+    }}>
       {/* Logo y Marca */}
-      <div style={estilos.logo}>
+      <div style={{
+        ...estilos.logo,
+        justifyContent: isMini ? 'center' : 'flex-start',
+        padding: isMini ? '0 0 12px' : '0 16px 12px',
+      }}>
         <img
           src="/assets/logo-small.png"
           alt="Equipo Daneri"
           style={estilos.logoImg}
           onError={(e) => { e.target.style.display = 'none' }}
         />
-        <div>
-          <div style={{ ...estilos.marcaPrincipal, color: 'var(--color-dorado)', fontSize: 13, letterSpacing: '0.1em', fontWeight: 800 }}>EQUIPO</div>
-          <div style={{ ...estilos.marcaPrincipal, color: '#FFFFFF', fontSize: 15, letterSpacing: '0.05em', fontWeight: 900 }}>DANERI</div>
-        </div>
+        {!isMini && (
+          <div>
+            <div style={{ ...estilos.marcaPrincipal, color: 'var(--color-dorado)', fontSize: 13, letterSpacing: '0.1em', fontWeight: 800 }}>EQUIPO</div>
+            <div style={{ ...estilos.marcaPrincipal, color: '#FFFFFF', fontSize: 15, letterSpacing: '0.05em', fontWeight: 900 }}>DANERI</div>
+          </div>
+        )}
       </div>
 
       <hr style={estilos.divisor} />
@@ -80,6 +92,7 @@ export default function BarraLateral() {
             <NavLink
               key={ruta}
               to={ruta}
+              title={isMini ? etiqueta : undefined}
               style={{
                 ...estilos.navItem,
                 color: active ? 'var(--color-dorado)' : 'var(--color-texto-suave)',
@@ -87,10 +100,12 @@ export default function BarraLateral() {
                 borderLeft: active
                   ? '3px solid var(--color-dorado)'
                   : '3px solid transparent',
+                justifyContent: isMini ? 'center' : 'flex-start',
+                padding: isMini ? '12px 0' : '10px 16px',
               }}
             >
               <Icono size={18} strokeWidth={active ? 2.5 : 1.5} />
-              <span style={estilos.navEtiqueta}>{etiqueta}</span>
+              {!isMini && <span style={estilos.navEtiqueta}>{etiqueta}</span>}
             </NavLink>
           )
         })}
@@ -100,68 +115,89 @@ export default function BarraLateral() {
       <div style={estilos.fondo}>
         <hr style={estilos.divisor} />
         {rol !== 'boxeador' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: 16 }}>
+          <div style={{ display: 'flex', flexDirection: isMini ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: isMini ? 0 : 16 }}>
             <NavLink
               to="/ajustes"
+              title={isMini ? "Ajustes" : undefined}
               style={({ isActive }) => ({
                 ...estilos.navItem,
                 color: isActive ? 'var(--color-dorado)' : 'var(--color-texto-suave)',
-                flex: 1
+                flex: isMini ? 'initial' : 1,
+                justifyContent: isMini ? 'center' : 'flex-start',
+                width: isMini ? '100%' : 'auto',
+                padding: isMini ? '12px 0' : '10px 16px',
               })}
             >
               <Settings size={18} />
-              <span style={estilos.navEtiqueta}>Ajustes</span>
+              {!isMini && <span style={estilos.navEtiqueta}>Ajustes</span>}
             </NavLink>
-            <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--color-texto-suave)', opacity: 0.65, fontWeight: 700 }}>
-              {appVersion}
-            </span>
+            {!isMini && (
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--color-texto-suave)', opacity: 0.65, fontWeight: 700 }}>
+                {appVersion}
+              </span>
+            )}
           </div>
         )}
 
         {/* Perfil Usuario Real (Google Auth) */}
-        <div style={estilos.analista}>
+        <div style={{
+          ...estilos.analista,
+          flexDirection: isMini ? 'column' : 'row',
+          alignItems: 'center',
+          gap: isMini ? 12 : 8,
+          padding: isMini ? '12px 0 4px' : '12px 16px 4px',
+          justifyContent: 'center',
+        }}>
           {usuario?.photoURL ? (
             <img src={usuario.photoURL} alt="Avatar" style={estilos.analistaAvatarImg} />
           ) : (
             <div style={estilos.analistaAvatar}>{usuario?.email?.substring(0,2).toUpperCase() || 'U'}</div>
           )}
-          <div style={{ flex: 1, overflow: 'visible', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={estilos.analistaNombre} title={usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}>
-                {usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}
-              </span>
-              {rol === 'admin' && (
-                <BadgeCheck size={14} color="#D4AF37" style={{ flexShrink: 0, filter: 'drop-shadow(0 0 3px rgba(212, 175, 55, 0.8))' }} />
-              )}
-            </div>
-            {rol === 'admin' ? (
-              <div style={{ display: 'flex', marginTop: 1 }}>
-                <span style={{
-                  fontSize: 8,
-                  fontWeight: 800,
-                  color: '#D4AF37',
-                  background: 'rgba(212, 175, 55, 0.12)',
-                  border: '1px solid rgba(212, 175, 55, 0.3)',
-                  padding: '1px 5px',
-                  borderRadius: 4,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 3,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                  textShadow: '0 0 2px rgba(212, 175, 55, 0.4)'
-                }}>
-                  <Crown size={8} fill="#D4AF37" style={{ flexShrink: 0 }} /> ADMIN
-                </span>
+          {!isMini ? (
+            <>
+              <div style={{ flex: 1, overflow: 'visible', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={estilos.analistaNombre} title={usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}>
+                    {usuario?.displayName || usuario?.email?.split('@')[0] || 'Usuario'}
+                  </span>
+                  {rol === 'admin' && (
+                    <BadgeCheck size={14} color="#D4AF37" style={{ flexShrink: 0, filter: 'drop-shadow(0 0 3px rgba(212, 175, 55, 0.8))' }} />
+                  )}
+                </div>
+                {rol === 'admin' ? (
+                  <div style={{ display: 'flex', marginTop: 1 }}>
+                    <span style={{
+                      fontSize: 8,
+                      fontWeight: 800,
+                      color: '#D4AF37',
+                      background: 'rgba(212, 175, 55, 0.12)',
+                      border: '1px solid rgba(212, 175, 55, 0.3)',
+                      padding: '1px 5px',
+                      borderRadius: 4,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                      textShadow: '0 0 2px rgba(212, 175, 55, 0.4)'
+                    }}>
+                      <Crown size={8} fill="#D4AF37" style={{ flexShrink: 0 }} /> ADMIN
+                    </span>
+                  </div>
+                ) : (
+                  <div style={estilos.analistaRol}>{rol ? rol.toUpperCase() : 'Cargando rol...'}</div>
+                )}
               </div>
-            ) : (
-              <div style={estilos.analistaRol}>{rol ? rol.toUpperCase() : 'Cargando rol...'}</div>
-            )}
-          </div>
-          <button onClick={handleLogout} style={estilos.btnLogout} title="Cerrar sesión">
-            <LogOut size={16} color="var(--color-texto-suave)" />
-          </button>
+              <button onClick={handleLogout} style={estilos.btnLogout} title="Cerrar sesión">
+                <LogOut size={16} color="var(--color-texto-suave)" />
+              </button>
+            </>
+          ) : (
+            <button onClick={handleLogout} style={{ ...estilos.btnLogout, marginTop: 4 }} title="Cerrar sesión">
+              <LogOut size={16} color="var(--color-texto-suave)" />
+            </button>
+          )}
         </div>
       </div>
     </aside>
@@ -170,8 +206,6 @@ export default function BarraLateral() {
 
 const estilos = {
   sidebar: {
-    width: 'var(--sidebar-ancho)',
-    minWidth: 'var(--sidebar-ancho)',
     height: '100%',
     background: 'var(--color-superficie)',
     borderRight: '1px solid var(--color-borde)',
@@ -179,6 +213,7 @@ const estilos = {
     flexDirection: 'column',
     padding: '16px 0',
     WebkitAppRegion: 'drag', // Permite arrastrar la ventana desde el sidebar
+    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   logo: {
     display: 'flex',

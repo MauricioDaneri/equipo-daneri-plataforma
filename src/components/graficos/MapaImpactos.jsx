@@ -180,59 +180,71 @@ export default function MapaImpactos({
 
         {/* Silueta Humana Estilizada - Anatómica Muscular (High-Fidelity) */}
         
-        {/* Hombros y Trapecios */}
-        <path d="M 65 95 C 40 100, 25 115, 20 135 C 40 120, 75 110, 85 110 L 115 110 C 125 110, 160 120, 180 135 C 175 115, 160 100, 135 95 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
-        
-        {/* Pecho / Pectorales con definición muscular */}
-        <path d="M 45 135 C 45 170, 75 185, 100 185 C 125 185, 155 170, 155 135 C 125 145, 75 145, 45 135 Z" fill="var(--color-superficie)" stroke={strokeColor} strokeWidth="1.5" />
-        <path d="M 100 138 L 100 185" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-        <path d="M 50 170 C 70 175, 90 175, 98 180" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
-        <path d="M 150 170 C 130 175, 110 175, 102 180" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
+        {/* Rejilla Técnica de Fondo (Technical grid of digital circles and crosshairs) */}
+        <circle cx="100" cy="180" r="150" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="1" />
+        <circle cx="100" cy="180" r="90" fill="none" stroke="rgba(255,255,255,0.025)" strokeWidth="1" strokeDasharray="3,3" />
+        <line x1="100" y1="20" x2="100" y2="380" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="5,5" />
+        <line x1="20" y1="180" x2="180" y2="180" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="5,5" />
 
-        {/* Abdomen (Six Pack / Core) */}
-        <path d="M 55 185 C 55 240, 65 310, 65 350 L 135 350 C 135 310, 145 240, 145 185 C 125 195, 75 195, 55 185 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
-        {/* Línea alba y Abs horizontales */}
-        <line x1="100" y1="185" x2="100" y2="340" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-        <path d="M 70 220 Q 100 230 130 220 M 68 260 Q 100 270 132 260 M 67 300 Q 100 310 133 300" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+        {/* Silueta Humana Estilizada - Anatómica Muscular (High-Fidelity) */}
         
-        {/* Oblicuos */}
-        <path d="M 55 185 C 45 230, 50 280, 65 350 L 75 350 C 65 280, 60 230, 65 185 Z" fill="rgba(0,0,0,0.2)" />
-        <path d="M 145 185 C 155 230, 150 280, 135 350 L 125 350 C 135 280, 140 230, 135 185 Z" fill="rgba(0,0,0,0.2)" />
-
-        {/* Shorts / Cinturón de Boxeo */}
-        <path d="M 60 350 L 140 350 C 138 370, 135 385, 130 395 L 70 395 C 65 385, 62 370, 60 350 Z" fill="rgba(212, 175, 55, 0.15)" stroke={strokeColor} strokeWidth="1.5" />
-        <path d="M 60 350 Q 100 360 140 350 L 138 375 Q 100 385 62 375 Z" fill="rgba(0,0,0,0.4)" stroke={strokeColor} strokeWidth="1.5" />
-        <circle cx="100" cy="365" r="8" fill="var(--color-dorado)" opacity="0.8" />
-        
-        {/* Brazos Izquierdo (Deltoides, Bíceps, Antebrazo) */}
-        <path d="M 20 135 C 10 160, 5 190, 15 210 C 25 230, 45 220, 55 185 C 40 185, 25 160, 45 135 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
-        <path d="M 15 210 C 10 240, 25 260, 45 270 L 60 240 C 45 230, 35 215, 55 185" fill="var(--color-superficie)" stroke={strokeColor} strokeWidth="1.5" />
-        
-        {/* Guante Izquierdo en Guardia Alta */}
-        <path d="M 40 265 C 25 275, 25 305, 45 315 C 65 325, 80 300, 70 275 Z" fill="rgba(20,20,20,0.9)" stroke={strokeColor} strokeWidth="2" />
-        <circle cx="55" cy="290" r="18" fill="rgba(255,255,255,0.05)" />
-
-        {/* Brazos Derecho (Deltoides, Bíceps, Antebrazo) */}
-        <path d="M 180 135 C 190 160, 195 190, 185 210 C 175 230, 155 220, 145 185 C 160 185, 175 160, 155 135 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
-        <path d="M 185 210 C 190 240, 175 260, 155 270 L 140 240 C 155 230, 165 215, 145 185" fill="var(--color-superficie)" stroke={strokeColor} strokeWidth="1.5" />
-        
-        {/* Guante Derecho en Guardia Alta */}
-        <path d="M 160 265 C 175 275, 175 305, 155 315 C 135 325, 120 300, 130 275 Z" fill="rgba(20,20,20,0.9)" stroke={strokeColor} strokeWidth="2" />
-        <circle cx="145" cy="290" r="18" fill="rgba(255,255,255,0.05)" />
-
         {/* Cuello musculoso (Esternocleidomastoideo) */}
-        <path d="M 85 95 C 80 80, 85 65, 85 65 L 115 65 C 115 65, 120 80, 115 95 Z" fill="var(--color-fondo)" stroke={strokeColor} strokeWidth="1.5" />
-        <line x1="93" y1="65" x2="100" y2="90" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-        <line x1="107" y1="65" x2="100" y2="90" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+        <path d="M 86 85 C 80 75, 84 62, 84 62 L 116 62 C 116 62, 120 75, 114 85 Z" fill="var(--color-fondo)" stroke={strokeColor} strokeWidth="1.5" />
+        <line x1="94" y1="62" x2="98" y2="80" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        <line x1="106" y1="62" x2="102" y2="80" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
 
         {/* Cabeza / Rostro anatómico */}
-        <path d="M 85 65 C 75 40, 80 15, 100 15 C 120 15, 125 40, 115 65 Z" fill="var(--color-fondo)" stroke={strokeColor} strokeWidth="1.5" />
-        <path d="M 88 55 L 100 68 L 112 55" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" />
-        <path d="M 90 40 Q 100 45 110 40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" />
+        <path d="M 84 62 C 73 38, 78 12, 100 12 C 122 12, 127 38, 116 62 Z" fill="var(--color-fondo)" stroke={strokeColor} strokeWidth="1.5" />
+        <path d="M 87 52 L 100 64 L 113 52" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+        <path d="M 90 36 Q 100 42 110 36" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
+
+        {/* Hombros y Trapecios */}
+        <path d="M 64 85 C 42 90, 26 102, 22 120 C 38 108, 74 100, 84 100 L 116 100 C 126 100, 162 108, 178 120 C 174 102, 158 90, 136 85 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
+        
+        {/* Pecho / Pectorales con definición muscular atlética */}
+        <path d="M 44 120 C 44 155, 74 170, 100 170 C 126 170, 156 155, 156 120 C 126 130, 74 130, 44 120 Z" fill="var(--color-superficie)" stroke={strokeColor} strokeWidth="1.5" />
+        <path d="M 100 123 L 100 170" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2" />
+        <path d="M 48 152 C 68 158, 88 158, 96 162 M 152 152 C 132 158, 112 158, 104 162" fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="2.5" />
+
+        {/* Abdomen (Six Pack / Core) */}
+        <path d="M 54 170 C 54 225, 64 290, 64 330 L 136 330 C 136 290, 146 225, 146 170 C 126 180, 74 180, 54 170 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
+        {/* Línea alba y Abs horizontales */}
+        <line x1="100" y1="170" x2="100" y2="320" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+        <path d="M 68 202 Q 100 210 132 202 M 66 238 Q 100 246 134 238 M 65 275 Q 100 283 135 275" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
+        
+        {/* Oblicuos */}
+        <path d="M 54 170 C 44 215, 49 265, 64 330 L 74 330 C 64 265, 59 215, 64 170 Z" fill="rgba(0,0,0,0.25)" />
+        <path d="M 146 170 C 156 215, 151 265, 136 330 L 126 330 C 136 265, 141 215, 136 170 Z" fill="rgba(0,0,0,0.25)" />
+
+        {/* Shorts / Cinturón de Campeón de Boxeo */}
+        <path d="M 58 330 L 142 330 C 140 350, 137 368, 132 382 L 68 382 C 63 368, 60 350, 58 330 Z" fill="rgba(212, 175, 55, 0.08)" stroke={strokeColor} strokeWidth="1.5" />
+        
+        {/* Faja del Cinturón */}
+        <path d="M 58 330 Q 100 340 142 330 L 139 356 Q 100 366 61 356 Z" fill="rgba(20, 20, 20, 0.95)" stroke={strokeColor} strokeWidth="1.5" />
+        
+        {/* Hebilla Dorada del Cinturón */}
+        <path d="M 90 334 L 110 334 Q 116 348 110 362 L 90 362 Q 84 348 90 334 Z" fill="var(--color-dorado)" opacity="0.95" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+        <polygon points="100,342 102,347 107,347 103,350 105,355 100,352 95,355 97,350 93,347 98,347" fill="#fff" />
+        
+        {/* Brazos Izquierdos (Deltoides en guardia alta) */}
+        <path d="M 22 120 C 10 140, 6 168, 14 185 C 22 202, 38 190, 48 160 C 36 160, 24 140, 38 120 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
+        {/* Antebrazo Izquierdo subiendo en Guardia Alta */}
+        <path d="M 14 185 C 10 205, 24 212, 38 198 L 64 100 L 52 94 Z" fill="var(--color-superficie)" stroke={strokeColor} strokeWidth="1.5" />
+        {/* Guante de Boxeo Izquierdo (Mano Alta junto a la cara y oreja) */}
+        <path d="M 44 96 C 34 84, 38 64, 52 56 C 66 48, 76 66, 68 86 Z" fill="rgba(20,20,20,0.95)" stroke={strokeColor} strokeWidth="2" />
+        <circle cx="53" cy="74" r="10" fill="rgba(255,255,255,0.06)" />
+
+        {/* Brazos Derechos (Deltoides en guardia alta) */}
+        <path d="M 178 120 C 190 140, 194 168, 186 185 C 178 202, 162 190, 152 160 C 164 160, 176 140, 162 120 Z" fill="var(--color-superficie-2)" stroke={strokeColor} strokeWidth="1.5" />
+        {/* Antebrazo Derecho subiendo en Guardia Alta */}
+        <path d="M 186 185 C 190 205, 176 212, 162 198 L 136 100 L 148 94 Z" fill="var(--color-superficie)" stroke={strokeColor} strokeWidth="1.5" />
+        {/* Guante de Boxeo Derecho (Mano Alta junto a la cara y oreja) */}
+        <path d="M 156 96 C 166 84, 162 64, 148 56 C 134 48, 124 66, 132 86 Z" fill="rgba(20,20,20,0.95)" stroke={strokeColor} strokeWidth="2" />
+        <circle cx="147" cy="74" r="10" fill="rgba(255,255,255,0.06)" />
 
         {/* Líneas divisorias de sectores visuales (sutiles) */}
-        <line x1="100" y1="20" x2="100" y2="398" stroke="rgba(255,255,255,0.05)" strokeDasharray="5,5" />
-        <line x1="20" y1="115" x2="180" y2="115" stroke="rgba(255,255,255,0.05)" strokeDasharray="5,5" />
+        <line x1="100" y1="20" x2="100" y2="380" stroke="rgba(255,255,255,0.04)" strokeDasharray="3,3" />
+        <line x1="20" y1="120" x2="180" y2="120" stroke="rgba(255,255,255,0.04)" strokeDasharray="3,3" />
 
         {/* PUNTOS DE IMPACTO */}
         {impactosFiltrados

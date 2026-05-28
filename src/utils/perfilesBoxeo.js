@@ -22,7 +22,16 @@ export function clasificarPerfiles(eventos = [], esquina = 'roja') {
     Pivoteo: 0,
     'Marca General': 0,
     Conectado: 0,
-    Errado: 0
+    Errado: 0,
+    // Nuevas estadísticas por mano
+    adelantadaLanzados: 0,
+    adelantadaConectados: 0,
+    adelantadaErrados: 0,
+    adelantadaFintas: 0,
+    atrasadaLanzados: 0,
+    atrasadaConectados: 0,
+    atrasadaErrados: 0,
+    atrasadaFintas: 0
   }
 
   const filtrados = eventos.filter(e => e.esquina === esquina)
@@ -50,11 +59,53 @@ export function clasificarPerfiles(eventos = [], esquina = 'roja') {
       counts[e.tipo]++
     }
     
-    // Check if it's connected or missed
-    if (e.tipo === 'Golpe Conectado' || (GOLPES_OFENSIVOS.includes(e.tipo) && e.resultado !== 'Errado')) {
+    // Check if it's connected, missed or feint
+    if (e.tipo === 'Golpe Conectado') {
       counts.Conectado++
-    } else if (e.tipo === 'Golpe Errado' || (GOLPES_OFENSIVOS.includes(e.tipo) && e.resultado === 'Errado')) {
+    } else if (e.tipo === 'Golpe Errado') {
       counts.Errado++
+    } else if (GOLPES_OFENSIVOS.includes(e.tipo)) {
+      // Determinar mano (adelantada o atrasada)
+      let mano = e.mano;
+      if (!mano) {
+        // Asignación automática por defecto basada en boxeo
+        if (e.tipo === 'Jab' || e.tipo === 'Gancho' || e.tipo === 'Recto') {
+          mano = 'adelantada';
+        } else {
+          mano = 'atrasada';
+        }
+      }
+      
+      const resultado = e.resultado || 'Conectado';
+      
+      if (resultado === 'Conectado') {
+        counts.Conectado++
+        if (mano === 'adelantada') {
+          counts.adelantadaConectados++
+          counts.adelantadaLanzados++
+        } else {
+          counts.atrasadaConectados++
+          counts.atrasadaLanzados++
+        }
+      } else if (resultado === 'Errado') {
+        counts.Errado++
+        if (mano === 'adelantada') {
+          counts.adelantadaErrados++
+          counts.adelantadaLanzados++
+        } else {
+          counts.atrasadaErrados++
+          counts.atrasadaLanzados++
+        }
+      } else if (resultado === 'Finta') {
+        counts.Finta++
+        if (mano === 'adelantada') {
+          counts.adelantadaFintas++
+          counts.adelantadaLanzados++
+        } else {
+          counts.atrasadaFintas++
+          counts.atrasadaLanzados++
+        }
+      }
     }
   })
 
