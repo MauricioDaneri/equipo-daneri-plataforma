@@ -20,7 +20,7 @@ export default function Informe() {
   const [notasDT, setNotasDT] = useState('')
   const [activeTab, setActiveTab] = useState('data') // 'data' | 'written'
   const [esquinaHeatmap, setEsquinaHeatmap] = useState('roja') // 'roja' | 'azul'
-  const [appVersion, setAppVersion] = useState('v2.0')
+  const [appVersion, setAppVersion] = useState('v1.2.6')
 
   useEffect(() => {
     if (window.api?.getVersion) {

@@ -213,7 +213,7 @@ export default function Login() {
           <Fingerprint size={14} color="var(--color-texto-suave)" />
           <span>Acceso Seguro</span>
           <span style={{ margin: '0 8px', color: 'var(--color-borde)' }}>|</span>
-          <span>v2.0.0</span>
+          <span>v1.2.6</span>
           {isElectron && <>
             <span style={{ margin: '0 8px', color: 'var(--color-borde)' }}>|</span>
             <span style={{ color: 'var(--color-texto-muted)', fontSize: 10 }}>Desktop</span>
